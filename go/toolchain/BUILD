@@ -29,14 +29,3 @@ filegroup(
     }),
     visibility = ["//visibility:public"],
 )
-
-filegroup(
-    name = "srcs",
-    srcs = [
-        "BUILD",
-    ],
-    visibility = [
-        "//src:__subpackages__",
-        "//tools/build_rules/go:__pkg__",
-    ],
-)

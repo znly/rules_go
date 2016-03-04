@@ -1,15 +1,3 @@
-package(
-    default_visibility = ["//visibility:public"],
-)
+load("//go:def.bzl", "go_prefix")
 
-filegroup(
-    name = "srcs",
-    srcs = glob(["**"]) + [
-        "//tools/build_rules/go/tools:srcs",
-        "//tools/build_rules/go/toolchain:srcs",
-    ],
-    visibility = [
-        "//src:__subpackages__",
-        "//tools:__pkg__",
-    ],
-)
+go_prefix("github.com/bazelbuild/rules_go")
