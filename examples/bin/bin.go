@@ -20,7 +20,7 @@ import (
 
 	"github_com/user/vendored"
 
-	"github.com/bazelbuild/bazel/examples/go/lib"
+	"github.com/bazelbuild/rules_go/examples/lib"
 )
 
 func main() {
