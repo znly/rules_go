@@ -30,7 +30,7 @@ _DEFAULT_LIB = "go_default_library"
 
 _VENDOR_PREFIX = "/vendor/"
 
-go_filetype = FileType([".go"])
+go_filetype = FileType([".go", ".s", ".S"])
 # be consistent to cc_library.
 hdr_exts = ['.h', '.hh', '.hpp', '.hxx', '.inc']
 cc_hdr_filetype = FileType(hdr_exts)
@@ -128,7 +128,34 @@ def go_environment_vars(ctx):
                                    {"GOOS": "linux",
                                     "GOARCH": "amd64"})
 
-def emit_go_compile_action(ctx, sources, deps, out_lib, cgo_object=None):
+def emit_go_asm_action(ctx, source, out_obj):
+  """Construct the command line for compiling Go Assembly code.
+  Constructs a symlink tree to accomodate for workspace name.
+  Args:
+    ctx: The skylark Context.
+    source: a source code artifact
+    out_obj: the artifact (configured target?) that should be produced
+  """
+  args = [
+      ctx.file.go_tool.path, "tool", "asm",
+      "-I", ctx.file.go_include.path,
+      "-o", out_obj.path,
+      source.path,
+  ]
+  cmds = [
+      "export GOROOT=$(pwd)/" + ctx.file.go_tool.dirname + "/..",
+      "mkdir -p " + out_obj.dirname,
+      " ".join(args),
+  ]
+
+  ctx.action(
+      inputs = [source] + ctx.files.toolchain,
+      outputs = [out_obj],
+      mnemonic = "GoAsmCompile",
+      command =  " && ".join(cmds),
+  )
+
+def emit_go_compile_action(ctx, sources, deps, out_lib, extra_objects=[]):
   """Construct the command line for compiling Go code.
   Constructs a symlink tree to accomodate for workspace name.
 
@@ -138,6 +165,8 @@ def emit_go_compile_action(ctx, sources, deps, out_lib, cgo_object=None):
     deps: an iterable of dependencies. Each dependency d should have an
       artifact in d.go_library_object representing an imported library.
     out_lib: the artifact (configured target?) that should be produced
+    extra_objects: an iterable of extra object files to be added to the
+      output archive file.
   """
   config_strip = len(ctx.configuration.bin_dir.path) + 1
 
@@ -185,14 +214,14 @@ def emit_go_compile_action(ctx, sources, deps, out_lib, cgo_object=None):
   # Set -p to the import path of the library, ie.
   # (ctx.label.package + "/" ctx.label.name) for now.
   cmds += [ "export GOROOT=$(pwd)/" + ctx.file.go_tool.dirname + "/..",
-    ' '.join(args + cmd_helper.template(sources, prefix + "%{path}"))]
+    ' '.join(args + cmd_helper.template(set(sources), prefix + "%{path}"))]
   extra_inputs = ctx.files.toolchain
 
-  if cgo_object:
+  if extra_objects:
+    extra_inputs += extra_objects
+    objs = ' '.join([c.path for c in extra_objects])
     cmds += ["cd " + ('../' * out_depth),
-             (ctx.file.go_tool.path + " tool pack r " +
-              out_lib.path + " " + cgo_object.cgo_obj.path)]
-    extra_inputs += [cgo_object.cgo_obj]
+             ctx.file.go_tool.path + " tool pack r " + out_lib.path + " " + objs]
 
   ctx.action(
       inputs = inputs + extra_inputs,
@@ -205,6 +234,8 @@ def go_library_impl(ctx):
   """Implements the go_library() rule."""
 
   sources = set(ctx.files.srcs)
+  go_srcs = set([s for s in sources if s.basename.endswith('.go')])
+  asm_srcs = [s for s in sources if s.basename.endswith('.s') or s.basename.endswith('.S')]
   deps = ctx.attr.deps
 
   cgo_object = None
@@ -212,7 +243,8 @@ def go_library_impl(ctx):
     cgo_object = ctx.attr.cgo_object
 
   if ctx.attr.library:
-    sources += ctx.attr.library.go_sources
+    go_srcs += ctx.attr.library.go_sources
+    asm_srcs += ctx.attr.library.asm_sources
     deps += ctx.attr.library.direct_deps
     if ctx.attr.library.cgo_object:
       if cgo_object:
@@ -221,16 +253,22 @@ def go_library_impl(ctx):
                                                ctx.attr.library.name))
       cgo_object = ctx.attr.library.cgo_object
 
-  if not sources:
+  if not go_srcs:
     fail("may not be empty", "srcs")
 
   transitive_cgo_deps = set([], order="link")
   if cgo_object:
     transitive_cgo_deps += cgo_object.cgo_deps
 
+  extra_objects = [cgo_object.cgo_obj] if cgo_object else []
+  for src in asm_srcs:
+    obj = ctx.new_file(src, "%s.dir/%s.o" % (ctx.label.name, src.basename[:-2]))
+    emit_go_asm_action(ctx, src, obj)
+    extra_objects += [obj]
+
   out_lib = ctx.outputs.lib
-  emit_go_compile_action(ctx, set(sources), deps, out_lib,
-                         cgo_object=cgo_object)
+  emit_go_compile_action(ctx, go_srcs, deps, out_lib,
+                         extra_objects=extra_objects)
 
   transitive_libs = set([out_lib])
   for dep in ctx.attr.deps:
@@ -247,7 +285,8 @@ def go_library_impl(ctx):
     files = set([out_lib]),
     direct_deps = deps,
     runfiles = runfiles,
-    go_sources = sources,
+    go_sources = go_srcs,
+    asm_sources = asm_srcs,
     go_library_object = out_lib,
     transitive_go_library_object = transitive_libs,
     cgo_object = cgo_object,
@@ -424,6 +463,12 @@ go_env_attrs = {
         allow_files = False,
         cfg = HOST_CFG,
     ),
+    "go_include": attr.label(
+        default = Label("//go/toolchain:go_include"),
+        single_file = True,
+        allow_files = True,
+        cfg = HOST_CFG,
+    ),
 }
 
 go_library_attrs = go_env_attrs + {
@@ -441,7 +486,7 @@ go_library_attrs = go_env_attrs + {
         ],
     ),
     "library": attr.label(
-        providers = ["go_sources", "cgo_object"],
+        providers = ["go_sources", "asm_sources", "cgo_object"],
     ),
 }
 
@@ -861,6 +906,11 @@ filegroup(
 filegroup(
   name = "go_tool",
   srcs = [ "go/bin/go" ],
+)
+
+filegroup(
+  name = "go_include",
+  srcs = [ "go/pkg/include" ],
 )
 """
 
