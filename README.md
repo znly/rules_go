@@ -204,7 +204,7 @@ go_library(name, srcs, deps, data)
 ## cgo\_library
 
 ```bzl
-cgo_library(name, srcs, copts, linkopts, deps, data)
+cgo_library(name, srcs, copts, clinkopts, cdeps, deps, data)
 ```
 <table class="table table-condensed table-bordered table-params">
   <colgroup>
@@ -243,18 +243,25 @@ cgo_library(name, srcs, copts, linkopts, deps, data)
       </td>
     </tr>
     <tr>
-      <td><code>linkopts</code></td>
+      <td><code>clinkopts</code></td>
       <td>
         <code>List of strings, optional</code>
         <p>Add these flags to the C++ linker</p>
       </td>
     </tr>
     <tr>
-      <td><code>deps</code></td>
+      <td><code>cdeps</code></td>
       <td>
         <code>List of labels, optional</code>
         <p>List of C/C++ libraries to be linked into the binary target.
         They must be <code>cc_library</code> rules.</p>
+      </td>
+    </tr>
+    <tr>
+      <td><code>deps</code></td>
+      <td>
+        <code>List of labels, optional</code>
+        <p>List of other Go libraries to be linked to this library</p>
       </td>
     </tr>
     <tr>
@@ -322,7 +329,7 @@ go_binary(name, srcs, deps, data)
       <td><code>deps</code></td>
       <td>
         <code>List of labels, optional</code>
-        <p>List of other libraries to linked to this binary target</p>
+        <p>List of other Go libraries to linked to this binary target</p>
       </td>
     </tr>
     <tr>
@@ -371,7 +378,7 @@ go_test(name, srcs, deps, data)
       <td><code>deps</code></td>
       <td>
         <code>List of labels, optional</code>
-        <p>List of other libraries to linked to this test target</p>
+        <p>List of other Go libraries to linked to this test target</p>
       </td>
     </tr>
     <tr>
