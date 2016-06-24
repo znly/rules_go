@@ -7,16 +7,16 @@ load("//go:def.bzl", "go_library", "go_test", "cgo_library")
 cgo_library(
     name = "cgo_lib",
     srcs = [
-        "import_example.go",
         "export_example.go",
         "generated.go",
+        "import_example.go",
         "use_exported.c",
         "use_exported.h",
     ],
-    deps = [":sub"],
     cdeps = ["//examples/cgo/cc_dependency:version"],
     clinkopts = ["-lm"],
     visibility = ["//visibility:private"],
+    deps = [":sub"],
 )
 
 go_library(
