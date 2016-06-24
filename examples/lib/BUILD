@@ -28,14 +28,14 @@ go_test(
     srcs = [
         "lib_x_test.go",
     ],
-    deps = [
-         ":go_default_library",
+    args = [
+        "-lib_test.buildtime",
+        "'05/19/2016 10:30am'",
     ],
     x_defs = {
         "github.com/bazelbuild/rules_go/examples/lib.buildTime": "05/19/2016 10:30am",
     },
-    args = [
-        "-lib_test.buildtime",
-        "'05/19/2016 10:30am'",
+    deps = [
+        ":go_default_library",
     ],
 )

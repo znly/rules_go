@@ -7,13 +7,13 @@ cc_library(
     name = "version",
     srcs = ["cxx_version.cc"],
     hdrs = ["version.h"],
+    visibility = ["//examples/cgo:__pkg__"],
     # TODO(yugui) Support darwin too and remove this workaround.
     # See also comments in cxx_version.cc.
     deps = select({
         ":darwin": [],
         "//conditions:default": [":c_version_wrap"],
     }),
-    visibility = ["//examples/cgo:__pkg__"],
 )
 
 cc_library(
@@ -21,6 +21,7 @@ cc_library(
     srcs = ["c_version.c"],
     hdrs = ["c_version.h"],
 )
+
 # Goes through genrule() to emulate prebuilt .so in srcs of cc_library.
 genrule(
     name = "copy_c_version",
@@ -29,6 +30,7 @@ genrule(
     cmd = "cp \"$$(find $(SRCS) -name '*.so')\" $@",
     output_to_bindir = 1,
 )
+
 cc_library(
     name = "c_version_wrap",
     srcs = ["libc_version.so"],
