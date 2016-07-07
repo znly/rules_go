@@ -324,6 +324,21 @@ def _c_linker_options(ctx, blacklist=[]):
     filtered.append(opt)
   return filtered
 
+def _short_path(f):
+  """Returns a short path of the given file.
+
+  It returns a relative path to the file from its root.
+  This is a workaround of bazelbuild/bazel#1462
+  """
+  if not f.root.path:
+    return f.path
+  prefix = f.root.path
+  if prefix[-1] != '/':
+    prefix = prefix + '/'
+  if not f.path.startswith(prefix):
+    fail("file name %s is not prefixed with its root %s", f.path, prefix)
+  return f.path[len(prefix):]
+
 def emit_go_link_action(ctx, importmap, transitive_libs, cgo_deps, lib,
                         executable, x_defs={}):
   """Sets up a symlink tree to libraries to link together."""
@@ -341,7 +356,7 @@ def emit_go_link_action(ctx, importmap, transitive_libs, cgo_deps, lib,
     tree_layout[l.path] = importpath + ".a"
 
   for d in cgo_deps:
-    tree_layout[d.path] = d.short_path
+    tree_layout[d.path] = _short_path(d)
 
   main_archive = importmap[lib.path] + ".a"
   tree_layout[lib.path] = main_archive
@@ -355,7 +370,7 @@ def emit_go_link_action(ctx, importmap, transitive_libs, cgo_deps, lib,
   ]
   for d in cgo_deps:
     if d.basename.endswith('.so'):
-      dirname = d.short_path[:-len(d.basename)]
+      dirname = _short_path(d)[:-len(d.basename)]
       ldflags += ["-Wl,-rpath,$ORIGIN/" + ("../" * pkg_depth) + dirname]
 
   link_cmd = [
@@ -580,15 +595,15 @@ def _cgo_codegen_impl(ctx):
     deps += d.cc.libs
     for lib in d.cc.libs:
       if lib.basename.startswith('lib') and lib.basename.endswith('.so'):
-        dirname = lib.short_path[:-len(lib.basename)]
+        dirname = _short_path(lib)[:-len(lib.basename)]
         linkopts += ['-L', dirname, '-l', lib.basename[3:-3]]
       else:
-        linkopts += [lib.short_path]
+        linkopts += [_short_path(lib)]
 
   # collect files from $(SRCDIR), $(GENDIR) and $(BINDIR)
   tree_layout = {}
   for s in srcs:
-    tree_layout[s.path] = s.short_path
+    tree_layout[s.path] = _short_path(s)
 
   out_dir = (ctx.configuration.genfiles_dir.path + '/' +
              _pkg_dir(ctx.label.workspace_root, ctx.label.package) + "/" +
@@ -606,7 +621,7 @@ def _cgo_codegen_impl(ctx):
       # The working directory must be the directory of the target go package
       # to prevent cgo from prefixing mangled directory names to the output
       # files.
-      "cd %s/src/$(dirname %s)" % (out_dir, ctx.files.srcs[0].short_path),
+      "cd %s/src/$(dirname %s)" % (out_dir, _short_path(ctx.files.srcs[0])),
       ' '.join(["$GOROOT/bin/go", "tool", "cgo", "-objdir", "$objdir", "--"] +
                copts + [f.basename for f in ctx.files.srcs]),
       "rm -f $objdir/_cgo_.o $objdir/_cgo_flags"]
@@ -793,7 +808,7 @@ def _cgo_object_impl(ctx):
       inputs = [lo],
       outputs = [ctx.outputs.out],
       mnemonic = "CGoObject",
-      progress_message = "Linking %s" % ctx.outputs.out.short_path,
+      progress_message = "Linking %s" % _short_path(ctx.outputs.out),
       executable = ctx.fragments.cpp.compiler_executable,
       arguments = arguments,
   )
