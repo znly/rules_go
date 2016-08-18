@@ -67,6 +67,18 @@ func TestGenerator(t *testing.T) {
 					],
 					deps = ["//lib/deep:go_default_library"],
 				)
+
+				go_test(
+					name = "go_default_test",
+					srcs = ["lib_test.go"],
+					library = ":go_default_library",
+				)
+
+				go_test(
+					name = "go_default_xtest",
+					srcs = ["lib_external_test.go"],
+					deps = [":go_default_library"],
+				)
 			`,
 		},
 		{
@@ -89,5 +101,26 @@ func TestGenerator(t *testing.T) {
 		if got, want := format(rules), canonicalize(t, spec.dir+"/BUILD", spec.want); got != want {
 			t.Errorf("g.Generate(%q, %#v) = %s; want %s", spec.dir, pkg, got, want)
 		}
+	}
+}
+
+func TestGeneratorGoPrefix(t *testing.T) {
+	g := rules.NewGenerator("example.com/repo/lib/deep")
+	want := `
+		go_prefix("example.com/repo/lib/deep")
+
+		go_library(
+			name = "go_default_library",
+			srcs = ["thought.go"],
+		)
+	`
+	pkg := packageFromDir(t, filepath.FromSlash("lib/deep"))
+	rules, err := g.Generate("", pkg)
+	if err != nil {
+		t.Errorf("g.Generate(%q, %#v) failed with %v; want success", "", pkg, err)
+	}
+
+	if got, want := format(rules), canonicalize(t, "BUILD", want); got != want {
+		t.Errorf("g.Generate(%q, %#v) = %s; want %s", "", pkg, got, want)
 	}
 }

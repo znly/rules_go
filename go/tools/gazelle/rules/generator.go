@@ -27,6 +27,13 @@ const (
 	// defaultLibName is the name of the default go_library rule in a Go
 	// package directory. It must be consistent to _DEFAULT_LIB in go/def.bzl.
 	defaultLibName = "go_default_library"
+	// defaultTestName is a name of an internal test corresponding to
+	// defaultLibName. It does not need to be consistent to something but it
+	// just needs to be unique in the Bazel package
+	defaultTestName = "go_default_test"
+	// defaultXTestName is a name of an external test corresponding to
+	// defaultLibName.
+	defaultXTestName = "go_default_xtest"
 )
 
 // Generator generates Bazel build rules for Go build targets
@@ -47,6 +54,7 @@ type Generator interface {
 // See also https://github.com/bazelbuild/rules_go#go_prefix.
 func NewGenerator(goPrefix string) Generator {
 	return &generator{
+		goPrefix: goPrefix,
 		// TODO(yugui): Support another resolver to cover the pattern 2 in
 		// https://github.com/bazelbuild/rules_go/issues/16#issuecomment-216010843
 		r: structuredResolver{goPrefix: goPrefix},
@@ -54,15 +62,42 @@ func NewGenerator(goPrefix string) Generator {
 }
 
 type generator struct {
-	r labelResolver
+	goPrefix string
+	r        labelResolver
 }
 
 func (g *generator) Generate(rel string, pkg *build.Package) ([]*bzl.Rule, error) {
+	var rules []*bzl.Rule
+	if rel == "" {
+		p, err := newRule("go_prefix", []interface{}{g.goPrefix}, nil)
+		if err != nil {
+			return nil, err
+		}
+		rules = append(rules, p)
+	}
+
 	r, err := g.generate(rel, pkg)
 	if err != nil {
 		return nil, err
 	}
-	return []*bzl.Rule{r}, nil
+	rules = append(rules, r)
+
+	if len(pkg.TestGoFiles) > 0 {
+		t, err := g.generateTest(rel, pkg, r.AttrString("name"))
+		if err != nil {
+			return nil, err
+		}
+		rules = append(rules, t)
+	}
+
+	if len(pkg.XTestGoFiles) > 0 {
+		t, err := g.generateXTest(rel, pkg, r.AttrString("name"))
+		if err != nil {
+			return nil, err
+		}
+		rules = append(rules, t)
+	}
+	return rules, nil
 }
 
 func (g *generator) generate(rel string, pkg *build.Package) (*bzl.Rule, error) {
@@ -87,6 +122,45 @@ func (g *generator) generate(rel string, pkg *build.Package) (*bzl.Rule, error) 
 	}
 
 	return newRule(kind, nil, attrs)
+}
+
+func (g *generator) generateTest(rel string, pkg *build.Package, library string) (*bzl.Rule, error) {
+	name := library + "_test"
+	if library == defaultLibName {
+		name = defaultTestName
+	}
+	attrs := []keyvalue{
+		{key: "name", value: name},
+		{key: "srcs", value: pkg.TestGoFiles},
+		{key: "library", value: ":" + library},
+	}
+
+	deps, err := g.dependencies(pkg.TestImports, rel)
+	if err != nil {
+		return nil, err
+	}
+	if len(deps) > 0 {
+		attrs = append(attrs, keyvalue{key: "deps", value: deps})
+	}
+	return newRule("go_test", nil, attrs)
+}
+
+func (g *generator) generateXTest(rel string, pkg *build.Package, library string) (*bzl.Rule, error) {
+	name := library + "_xtest"
+	if library == defaultLibName {
+		name = defaultXTestName
+	}
+	attrs := []keyvalue{
+		{key: "name", value: name},
+		{key: "srcs", value: pkg.XTestGoFiles},
+	}
+
+	deps, err := g.dependencies(pkg.XTestImports, rel)
+	if err != nil {
+		return nil, err
+	}
+	attrs = append(attrs, keyvalue{key: "deps", value: deps})
+	return newRule("go_test", nil, attrs)
 }
 
 func (g *generator) dependencies(imports []string, dir string) ([]string, error) {
