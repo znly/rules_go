@@ -422,7 +422,7 @@ def go_binary_impl(ctx):
   lib_out = ctx.outputs.lib
 
   emit_go_link_action(
-    ctx, 
+    ctx,
     transitive_libs=lib_result.transitive_go_library_object,
     importmap=lib_result.transitive_go_importmap,
     cgo_deps=lib_result.transitive_cgo_deps,
@@ -960,37 +960,54 @@ def cgo_library(name, srcs,
       **kwargs
   )
 
+
+################
+
+_toolchain_map = {
+    'linux': struct(
+        url = "https://storage.googleapis.com/golang/go1.7.linux-amd64.tar.gz",
+        sha256 = "702ad90f705365227e902b42d91dd1a40e48ca7f67a2f4b2fd052aaa4295cd95",
+    ),
+    'mac os x': struct(
+        url = "https://storage.googleapis.com/golang/go1.7.darwin-amd64.tar.gz",
+        sha256 = "51d905e0b43b3d0ed41aaf23e19001ab4bc3f96c3ca134b48f7892485fc52961",
+    ),
+}
+
 GO_TOOLCHAIN_BUILD_FILE = """
 package(
   default_visibility = [ "//visibility:public" ])
 
 filegroup(
   name = "toolchain",
-  srcs = glob(["go/bin/*", "go/pkg/**", ]),
+  srcs = glob(["bin/*", "pkg/**", ]),
 )
 
 filegroup(
   name = "go_tool",
-  srcs = [ "go/bin/go" ],
+  srcs = [ "bin/go" ],
 )
 
 filegroup(
   name = "go_include",
-  srcs = [ "go/pkg/include" ],
+  srcs = [ "pkg/include" ],
 )
 """
 
-def go_repositories():
-  native.new_http_archive(
-    name=  "golang_linux_amd64",
-    url = "https://storage.googleapis.com/golang/go1.7.linux-amd64.tar.gz",
-    build_file_content = GO_TOOLCHAIN_BUILD_FILE,
-    sha256 = "702ad90f705365227e902b42d91dd1a40e48ca7f67a2f4b2fd052aaa4295cd95"
-  )
+def _go_repositories_impl(ctx):
+  toolchain = _toolchain_map.get(ctx.os.name)
+  if not toolchain:
+    fail("unsupported operating system: " + ctx.os.name)
 
-  native.new_http_archive(
-    name=  "golang_darwin_amd64",
-    url = "https://storage.googleapis.com/golang/go1.7.darwin-amd64.tar.gz",
-    build_file_content = GO_TOOLCHAIN_BUILD_FILE,
-    sha256 = "51d905e0b43b3d0ed41aaf23e19001ab4bc3f96c3ca134b48f7892485fc52961"
+  result = ctx.execute(["mkdir", "-p", ctx.path('')])
+  if result.return_code:
+    fail("cannot create directory %s: %s" % (ctx.path(''), result.stderr))
+  ctx.download_and_extract(toolchain.url, '.', toolchain.sha256, 'tar.gz', 'go')
+  ctx.file("BUILD", GO_TOOLCHAIN_BUILD_FILE, False)
+
+_go_repositories = repository_rule(_go_repositories_impl)
+
+def go_repositories():
+  _go_repositories(
+      name = "io_bazel_rules_go_toolchain",
   )

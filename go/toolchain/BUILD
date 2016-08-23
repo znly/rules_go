@@ -1,40 +1,18 @@
 package(
-    default_visibility = ["//src:__subpackages__"],
+    default_visibility = ["//visibility:public"],
 )
 
-config_setting(
-    name = "darwin",
-    values = {"host_cpu": "darwin"},
-)
-
-config_setting(
-    name = "k8",
-    values = {"host_cpu": "k8"},
-)
-
-filegroup(
+alias(
     name = "toolchain",
-    srcs = select({
-        ":darwin": ["@golang_darwin_amd64//:toolchain"],
-        ":k8": ["@golang_linux_amd64//:toolchain"],
-    }),
-    visibility = ["//visibility:public"],
+    actual = "@io_bazel_rules_go_toolchain//:toolchain",
 )
 
-filegroup(
+alias(
     name = "go_tool",
-    srcs = select({
-        ":darwin": ["@golang_darwin_amd64//:go_tool"],
-        ":k8": ["@golang_linux_amd64//:go_tool"],
-    }),
-    visibility = ["//visibility:public"],
+    actual = "@io_bazel_rules_go_toolchain//:go_tool",
 )
 
-filegroup(
+alias(
     name = "go_include",
-    srcs = select({
-        ":darwin": ["@golang_darwin_amd64//:go_include"],
-        ":k8": ["@golang_linux_amd64//:go_include"],
-    }),
-    visibility = ["//visibility:public"],
+    actual = "@io_bazel_rules_go_toolchain//:go_include",
 )
