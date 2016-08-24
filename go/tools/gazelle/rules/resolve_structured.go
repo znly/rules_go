@@ -35,15 +35,15 @@ func (r structuredResolver) resolve(importpath, dir string) (label, error) {
 	}
 
 	if importpath == r.goPrefix {
-		return label{name: "go_default_library"}, nil
+		return label{name: defaultLibName}, nil
 	}
 
 	if prefix := r.goPrefix + "/"; strings.HasPrefix(importpath, prefix) {
 		pkg := strings.TrimPrefix(importpath, prefix)
 		if pkg == dir {
-			return label{name: "go_default_library", relative: true}, nil
+			return label{name: defaultLibName, relative: true}, nil
 		}
-		return label{pkg: pkg, name: "go_default_library"}, nil
+		return label{pkg: pkg, name: defaultLibName}, nil
 	}
 
 	return label{}, fmt.Errorf("importpath %q does not start with goPrefix %q", importpath, r.goPrefix)

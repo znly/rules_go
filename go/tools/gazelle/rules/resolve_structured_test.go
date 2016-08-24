@@ -30,38 +30,38 @@ func TestStructuredResolver(t *testing.T) {
 		{
 			importpath: "example.com/repo",
 			curPkg:     "",
-			want:       label{name: "go_default_library"},
+			want:       label{name: defaultLibName},
 		},
 		{
 			importpath: "example.com/repo/lib",
 			curPkg:     "",
-			want:       label{pkg: "lib", name: "go_default_library"},
+			want:       label{pkg: "lib", name: defaultLibName},
 		},
 		{
 			importpath: "example.com/repo/another",
 			curPkg:     "",
-			want:       label{pkg: "another", name: "go_default_library"},
+			want:       label{pkg: "another", name: defaultLibName},
 		},
 
 		{
 			importpath: "example.com/repo",
 			curPkg:     "lib",
-			want:       label{name: "go_default_library"},
+			want:       label{name: defaultLibName},
 		},
 		{
 			importpath: "example.com/repo/lib",
 			curPkg:     "lib",
-			want:       label{name: "go_default_library", relative: true},
+			want:       label{name: defaultLibName, relative: true},
 		},
 		{
 			importpath: "example.com/repo/lib/sub",
 			curPkg:     "lib",
-			want:       label{pkg: "lib/sub", name: "go_default_library"},
+			want:       label{pkg: "lib/sub", name: defaultLibName},
 		},
 		{
 			importpath: "example.com/repo/another",
 			curPkg:     "lib",
-			want:       label{pkg: "another", name: "go_default_library"},
+			want:       label{pkg: "another", name: defaultLibName},
 		},
 	} {
 

@@ -53,11 +53,21 @@ type Generator interface {
 // "goPrefix" is the go_prefix corresponding to the repository root.
 // See also https://github.com/bazelbuild/rules_go#go_prefix.
 func NewGenerator(goPrefix string) Generator {
+	var (
+		// TODO(yugui) Support another resolver to cover the pattern 2 in
+		// https://github.com/bazelbuild/rules_go/issues/16#issuecomment-216010843
+		r = structuredResolver{goPrefix: goPrefix}
+		e externalResolver
+	)
+
 	return &generator{
 		goPrefix: goPrefix,
-		// TODO(yugui): Support another resolver to cover the pattern 2 in
-		// https://github.com/bazelbuild/rules_go/issues/16#issuecomment-216010843
-		r: structuredResolver{goPrefix: goPrefix},
+		r: resolverFunc(func(importpath, dir string) (label, error) {
+			if importpath != goPrefix && !strings.HasPrefix(importpath, goPrefix+"/") && !strings.HasPrefix(importpath, "./") {
+				return e.resolve(importpath, dir)
+			}
+			return r.resolve(importpath, dir)
+		}),
 	}
 }
 
