@@ -970,17 +970,6 @@ def cgo_library(name, srcs,
 
 ################
 
-_toolchain_map = {
-    'linux': struct(
-        url = "https://storage.googleapis.com/golang/go1.7.linux-amd64.tar.gz",
-        sha256 = "702ad90f705365227e902b42d91dd1a40e48ca7f67a2f4b2fd052aaa4295cd95",
-    ),
-    'mac os x': struct(
-        url = "https://storage.googleapis.com/golang/go1.7.darwin-amd64.tar.gz",
-        sha256 = "51d905e0b43b3d0ed41aaf23e19001ab4bc3f96c3ca134b48f7892485fc52961",
-    ),
-}
-
 GO_TOOLCHAIN_BUILD_FILE = """
 package(
   default_visibility = [ "//visibility:public" ])
@@ -1001,20 +990,52 @@ filegroup(
 )
 """
 
-def _go_repositories_impl(ctx):
-  toolchain = _toolchain_map.get(ctx.os.name)
-  if not toolchain:
-    fail("unsupported operating system: " + ctx.os.name)
+def _go_repository_select_impl(ctx):
+  os = ctx.os.name
+  # NOTE: This mapping cannot be table-driven to prevent
+  # Bazel from downloading the other archive.
+  if os == 'linux':
+    goroot = ctx.path(ctx.attr._linux).dirname
+  elif os == 'mac os x':
+    goroot = ctx.path(ctx.attr._darwin).dirname
+  else:
+    fail("unsupported operating system: " + os)
 
-  result = ctx.execute(["mkdir", "-p", ctx.path('')])
-  if result.return_code:
-    fail("cannot create directory %s: %s" % (ctx.path(''), result.stderr))
-  ctx.download_and_extract(toolchain.url, '.', toolchain.sha256, 'tar.gz', 'go')
-  ctx.file("BUILD", GO_TOOLCHAIN_BUILD_FILE, False)
+  ctx.symlink(goroot, ctx.path(''))
 
-_go_repositories = repository_rule(_go_repositories_impl)
+_go_repository_select = repository_rule(
+    _go_repository_select_impl,
+    attrs = {
+        "_linux": attr.label(
+            default = Label("@golang_linux_amd64//:BUILD"),
+            allow_files = True,
+            single_file = True,
+        ),
+        "_darwin": attr.label(
+            default = Label("@golang_darwin_amd64//:BUILD"),
+            allow_files = True,
+            single_file = True,
+        ),
+    },
+)
 
 def go_repositories():
-  _go_repositories(
+  native.new_http_archive(
+      name =  "golang_linux_amd64",
+      url = "https://storage.googleapis.com/golang/go1.7.linux-amd64.tar.gz",
+      build_file_content = GO_TOOLCHAIN_BUILD_FILE,
+      sha256 = "702ad90f705365227e902b42d91dd1a40e48ca7f67a2f4b2fd052aaa4295cd95",
+      strip_prefix = "go",
+  )
+
+  native.new_http_archive(
+      name = "golang_darwin_amd64",
+      url = "https://storage.googleapis.com/golang/go1.7.darwin-amd64.tar.gz",
+      build_file_content = GO_TOOLCHAIN_BUILD_FILE,
+      sha256 = "51d905e0b43b3d0ed41aaf23e19001ab4bc3f96c3ca134b48f7892485fc52961",
+      strip_prefix = "go",
+  )
+
+  _go_repository_select(
       name = "io_bazel_rules_go_toolchain",
   )
