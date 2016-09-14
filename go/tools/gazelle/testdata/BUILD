@@ -8,5 +8,5 @@ load("//go:def.bzl", "go_library")
 go_library(
     name = "go_default_library",
     srcs = ["testdata.go"],
-    data = glob(["repo/**/*.go"]),
+    data = glob(["repo/**/*.go", "repo/**/*.s"]),
 )

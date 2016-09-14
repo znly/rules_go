@@ -128,7 +128,7 @@ func (g *generator) generate(rel string, pkg *build.Package) (*bzl.Rule, error) 
 
 	attrs := []keyvalue{
 		{key: "name", value: name},
-		{key: "srcs", value: pkg.GoFiles},
+		{key: "srcs", value: append(pkg.GoFiles, pkg.SFiles...)},
 		{key: "visibility", value: []string{visibility}},
 	}
 

@@ -64,6 +64,7 @@ func TestGenerator(t *testing.T) {
 					srcs = [
 						"doc.go",
 						"lib.go",
+						"asm.s",
 					],
 					visibility = ["//visibility:public"],
 					deps = ["//lib/internal/deep:go_default_library"],
