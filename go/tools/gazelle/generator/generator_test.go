@@ -55,6 +55,13 @@ func TestGenerator(t *testing.T) {
 					},
 				},
 			},
+			"lib/relativeimporter": {
+				{
+					Call: &bzl.CallExpr{
+						X: &bzl.LiteralExpr{Token: "go_library"},
+					},
+				},
+			},
 			"bin": {
 				{
 					Call: &bzl.CallExpr{
@@ -106,6 +113,13 @@ func TestGenerator(t *testing.T) {
 				loadExpr("go_library", "go_test"),
 				stub.fixtures["lib/internal/deep"][0].Call,
 				stub.fixtures["lib/internal/deep"][1].Call,
+			},
+		},
+		{
+			Path: "lib/relativeimporter/BUILD",
+			Stmt: []bzl.Expr{
+				loadExpr("go_library"),
+				stub.fixtures["lib/relativeimporter"][0].Call,
 			},
 		},
 		{
