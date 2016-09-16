@@ -999,8 +999,175 @@ def cgo_library(name, srcs,
       **kwargs
   )
 
+################
+
+def _go_repository_impl(ctx):
+  fetch_repo = ctx.path(ctx.attr._fetch_repo)
+
+  if ctx.attr.commit and ctx.attr.tag:
+    fail("cannot specify both of commit and tag", "commit")
+  if ctx.attr.commit:
+    rev = ctx.attr.commit
+  elif ctx.attr.tag:
+    rev = ctx.attr.tag
+  else:
+    fail("neither commit or tag is specified", "commit")
+
+  # TODO(yugui): support submodule?
+  # c.f. https://www.bazel.io/versions/master/docs/be/workspace.html#git_repository.init_submodules
+  result = ctx.execute([
+      fetch_repo,
+      '--dest', ctx.path(''),
+      '--remote', ctx.attr.importpath,
+      '--rev', rev])
+  if result.return_code:
+    fail("failed to fetch %s: %s" % (ctx.attr.importpath, result.stderr))
+
+def _new_go_repository_impl(ctx):
+  _go_repository_impl(ctx)
+  gazelle = ctx.path(ctx.attr._gazelle)
+
+  result = ctx.execute([
+      gazelle,
+      '--go_prefix', ctx.attr.importpath, '--mode', 'fix',
+      ctx.path('')])
+  if result.return_code:
+    fail("failed to generate BUILD files for %s: %s" % (
+        ctx.attr.importpath, result.stderr))
+
+_go_repository_attrs = {
+    "importpath": attr.string(mandatory = True),
+    "commit": attr.string(),
+    "tag": attr.string(),
+
+    "_fetch_repo": attr.label(
+        default = Label("@io_bazel_rules_go_repository_tools//:bin/fetch_repo"),
+        allow_files = True,
+        single_file = True,
+        executable = True,
+    ),
+}
+
+go_repository = repository_rule(
+    implementation = _go_repository_impl,
+    attrs = _go_repository_attrs,
+)
+
+new_go_repository = repository_rule(
+    implementation = _new_go_repository_impl,
+    attrs = _go_repository_attrs + {
+        "_gazelle": attr.label(
+            default = Label("@io_bazel_rules_go_repository_tools//:bin/gazelle"),
+            allow_files = True,
+            single_file = True,
+            executable = True,
+        ),
+    },
+)
 
 ################
+
+repository_tool_deps = {
+    'buildifier': struct(
+        importpath = 'github.com/bazelbuild/buildifier',
+        repo = 'https://github.com/bazelbuild/buildifier',
+        commit = '0ca1d7991357ae7a7555589af88930d82cf07c0a',
+    ),
+    'tools': struct(
+        importpath = 'golang.org/x/tools',
+        repo = 'https://github.com/golang/tools',
+        commit = '2bbdb4568e161d12394da43e88b384c6be63928b',
+    )
+}
+
+def go_internal_tools_deps():
+  """only for internal use in rules_go"""
+  go_repository(
+      name = "io_bazel_buildifier",
+      commit = repository_tool_deps['buildifier'].commit,
+      importpath = repository_tool_deps['buildifier'].importpath,
+  )
+
+  new_go_repository(
+      name = "org_golang_x_tools",
+      commit = repository_tool_deps['tools'].commit,
+      importpath = repository_tool_deps['tools'].importpath,
+  )
+
+def _fetch_repository_tools_deps(ctx, goroot, gopath):
+  for name, dep in repository_tool_deps.items():
+    result = ctx.execute(['mkdir', '-p', ctx.path('src/' + dep.importpath)])
+    if result.return_code:
+      fail('failed to create directory: %s' % result.stderr)
+    ctx.download_and_extract(
+        '%s/archive/%s.zip' % (dep.repo, dep.commit),
+        'src/%s' % dep.importpath, '', 'zip', '%s-%s' % (name, dep.commit))
+
+  result = ctx.execute([
+      'env', 'GOROOT=%s' % goroot, 'GOPATH=%s' % gopath, 'PATH=%s/bin' % goroot,
+      'go', 'generate', 'github.com/bazelbuild/buildifier/core'])
+  if result.return_code:
+    fail("failed to go genrate: %s" % result.stderr)
+
+_GO_REPOSITORY_TOOLS_BUILD_FILE = """
+package(default_visibility = ["//visibility:public"])
+
+filegroup(
+    name = "fetch_repo",
+    srcs = ["bin/fetch_repo"],
+)
+
+filegroup(
+    name = "gazelle",
+    srcs = ["bin/gazelle"],
+)
+"""
+
+def _go_repository_tools_impl(ctx):
+  go_tool = ctx.path(ctx.attr._go_tool)
+  goroot = go_tool.dirname.dirname
+  gopath = ctx.path('')
+  prefix = "github.com/bazelbuild/rules_go/" + ctx.attr._tools.package
+  src_path = ctx.path(ctx.attr._tools).dirname
+
+  _fetch_repository_tools_deps(ctx, goroot, gopath)
+
+  for t, pkg in [("gazelle", 'gazelle/gazelle'), ("fetch_repo", "fetch_repo")]:
+    ctx.symlink("%s/%s" % (src_path, t), "src/%s/%s" % (prefix, t))
+
+    result = ctx.execute([
+        'env', 'GOROOT=%s' % goroot, 'GOPATH=%s' % gopath,
+        go_tool, "build",
+        "-o", ctx.path("bin/" + t), "%s/%s" % (prefix, pkg)])
+    if result.return_code:
+      fail("failed to build %s: %s" % (t, result.stderr))
+  ctx.file('BUILD', _GO_REPOSITORY_TOOLS_BUILD_FILE, False)
+
+_go_repository_tools = repository_rule(
+    _go_repository_tools_impl,
+    attrs = {
+        "_tools": attr.label(
+            default = Label("//go/tools:BUILD"),
+            allow_files = True,
+            single_file = True,
+        ),
+        "_go_tool": attr.label(
+            default = Label("@io_bazel_rules_go_toolchain//:bin/go"),
+            allow_files = True,
+            single_file = True,
+        ),
+        "_x_tools": attr.label(
+            default = Label("@org_golang_x_tools//:BUILD"),
+            allow_files = True,
+            single_file = True,
+        ),
+        "_buildifier": attr.label(
+            default = Label("@io_bazel_buildifier//:BUILD"),
+            allow_files = True,
+            single_file = True,
+        ),
+    },
+)
 
 GO_TOOLCHAIN_BUILD_FILE = """
 package(
@@ -1070,4 +1237,7 @@ def go_repositories():
 
   _go_repository_select(
       name = "io_bazel_rules_go_toolchain",
+  )
+  _go_repository_tools(
+      name = "io_bazel_rules_go_repository_tools",
   )
