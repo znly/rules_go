@@ -1,4 +1,4 @@
-package workspace
+package wspace
 
 import (
 	"io/ioutil"

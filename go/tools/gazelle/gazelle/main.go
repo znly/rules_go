@@ -26,7 +26,7 @@ import (
 
 	bzl "github.com/bazelbuild/buildifier/core"
 	"github.com/bazelbuild/rules_go/go/tools/gazelle/generator"
-	"github.com/bazelbuild/rules_go/go/tools/gazelle/workspace"
+	"github.com/bazelbuild/rules_go/go/tools/gazelle/wspace"
 )
 
 var (
@@ -92,15 +92,20 @@ func main() {
 	flag.Parse()
 
 	if *repoRoot == "" {
-		cwd, err := os.Getwd()
-		if err != nil {
-			log.Fatal(err)
+		if flag.NArg() == 1 {
+			*repoRoot = flag.Arg(0)
+		} else {
+			fmt.Printf("%v", flag.Args())
+			cwd, err := os.Getwd()
+			if err != nil {
+				log.Fatal(err)
+			}
+			r, err := wspace.Find(cwd)
+			if err != nil {
+				log.Fatalf("-repo_root not specified, and WORKSPACE cannot be found: %v", err)
+			}
+			*repoRoot = r
 		}
-		r, err := workspace.Find(cwd)
-		if err != nil {
-			log.Fatalf("-repo_root not specified, and WORKSPACE cannot be found: %v", err)
-		}
-		*repoRoot = r
 	}
 	if *goPrefix == "" {
 		// TODO(yugui): Extract go_prefix from the top level BUILD file if

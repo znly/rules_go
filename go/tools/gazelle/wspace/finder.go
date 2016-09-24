@@ -1,5 +1,5 @@
-// Package workspace provides functions to locate and modify a bazel WORKSPACE file.
-package workspace
+// Package wspace provides functions to locate and modify a bazel WORKSPACE file.
+package wspace
 
 import (
 	"os"
