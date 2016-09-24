@@ -8,7 +8,8 @@ import (
 
 const workspaceFile = "WORKSPACE"
 
-// Find
+// Find searches from the given dir and up for the WORKSPACE file
+// returning the directory containing it, or an error if none found in the tree.
 func Find(dir string) (string, error) {
 	if dir == "" || dir == "/" {
 		return "", os.ErrNotExist
