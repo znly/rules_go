@@ -92,19 +92,9 @@ func main() {
 	flag.Parse()
 
 	if *repoRoot == "" {
-		if flag.NArg() == 1 {
-			*repoRoot = flag.Arg(0)
-		} else {
-			fmt.Printf("%v", flag.Args())
-			cwd, err := os.Getwd()
-			if err != nil {
-				log.Fatal(err)
-			}
-			r, err := wspace.Find(cwd)
-			if err != nil {
-				log.Fatalf("-repo_root not specified, and WORKSPACE cannot be found: %v", err)
-			}
-			*repoRoot = r
+		var err error
+		if *repoRoot, err = repo(flag.Args()); err != nil {
+			log.Fatal(err)
 		}
 	}
 	if *goPrefix == "" {
@@ -126,4 +116,19 @@ func main() {
 	if err := run(args, emit); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func repo(args []string) (string, error) {
+	if len(args) == 1 {
+		return args[0], nil
+	}
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	r, err := wspace.Find(cwd)
+	if err != nil {
+		return "", fmt.Errorf("-repo_root not specified, and WORKSPACE cannot be found: %v", err)
+	}
+	return r, nil
 }
