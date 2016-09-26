@@ -18,8 +18,10 @@ limitations under the License.
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -98,9 +100,10 @@ func main() {
 		}
 	}
 	if *goPrefix == "" {
-		// TODO(yugui): Extract go_prefix from the top level BUILD file if
-		// exists
-		log.Fatal("-go_prefix is required")
+		var err error
+		if *goPrefix, err = loadGoPrefix(*repoRoot); err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	emit := modeFromName[*mode]
@@ -116,6 +119,40 @@ func main() {
 	if err := run(args, emit); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func loadGoPrefix(repo string) (string, error) {
+	p := filepath.Join(repo, "BUILD")
+	b, err := ioutil.ReadFile(p)
+	if err != nil {
+		return "", err
+	}
+	f, err := bzl.Parse(p, b)
+	if err != nil {
+		return "", err
+	}
+	for _, s := range f.Stmt {
+		c, ok := s.(*bzl.CallExpr)
+		if !ok {
+			continue
+		}
+		l, ok := c.X.(*bzl.LiteralExpr)
+		if !ok {
+			continue
+		}
+		if l.Token != "go_prefix" {
+			continue
+		}
+		if len(c.List) != 1 {
+			return "", fmt.Errorf("found go_prefix(%v) with too many args", c.List)
+		}
+		v, ok := c.List[0].(*bzl.StringExpr)
+		if !ok {
+			return "", fmt.Errorf("found go_prefix(%v) which is not a string", c.List)
+		}
+		return v.Value, nil
+	}
+	return "", errors.New("-go_prefix is required")
 }
 
 func repo(args []string) (string, error) {
