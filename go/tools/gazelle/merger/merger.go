@@ -63,7 +63,7 @@ func MergeWithExisting(newfile *bzl.File) (*bzl.File, error) {
 			continue
 		}
 		if literal(c.X) == "load" {
-			mergeLoad(c, other)
+			mergeLoad(c, other, f)
 		} else {
 			merge(c, other)
 		}
@@ -104,13 +104,16 @@ func replace(dest *bzl.CallExpr, update *bzl.BinaryExpr) {
 	dest.List = append(dest.List, update)
 }
 
-func mergeLoad(src, dest *bzl.CallExpr) {
+func mergeLoad(src, dest *bzl.CallExpr, oldfile *bzl.File) {
 	vals := make(map[string]bzl.Expr)
-	for _, v := range dest.List[1:] {
-		vals[stringValue(v)] = v
-	}
 	for _, v := range src.List[1:] {
 		vals[stringValue(v)] = v
+	}
+	for _, v := range dest.List[1:] {
+		rule := stringValue(v)
+		if _, ok := vals[rule]; !ok && ruleUsed(rule, oldfile) {
+			vals[rule] = v
+		}
 	}
 	keys := make([]string, 0, len(vals))
 	for k := range vals {
@@ -121,6 +124,19 @@ func mergeLoad(src, dest *bzl.CallExpr) {
 	for _, k := range keys {
 		dest.List = append(dest.List, vals[k])
 	}
+}
+
+func ruleUsed(rule string, oldfile *bzl.File) bool {
+	for _, s := range oldfile.Stmt {
+		c, ok := s.(*bzl.CallExpr)
+		if !ok {
+			continue
+		}
+		if rule == literal(c) {
+			return true
+		}
+	}
+	return false
 }
 
 // match looks for the matching CallExpr in f using X and name
