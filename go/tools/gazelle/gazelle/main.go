@@ -18,16 +18,16 @@ limitations under the License.
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
 
 	bzl "github.com/bazelbuild/buildifier/core"
 	"github.com/bazelbuild/rules_go/go/tools/gazelle/generator"
+	"github.com/bazelbuild/rules_go/go/tools/gazelle/rules"
+	"github.com/bazelbuild/rules_go/go/tools/gazelle/util"
 	"github.com/bazelbuild/rules_go/go/tools/gazelle/wspace"
 )
 
@@ -35,6 +35,7 @@ var (
 	goPrefix = flag.String("go_prefix", "", "go_prefix of the target workspace")
 	repoRoot = flag.String("repo_root", "", "path to a directory which corresponds to go_prefix, otherwise gazelle searches for it.")
 	mode     = flag.String("mode", "print", "print, fix or diff")
+	remote   = flag.String("remote", "skip", "What to do about missing remote WORKSPACE dependencies: skip, print, fix")
 )
 
 var modeFromName = map[string]func(*bzl.File) error{
@@ -44,7 +45,7 @@ var modeFromName = map[string]func(*bzl.File) error{
 }
 
 func run(dirs []string, emit func(*bzl.File) error) error {
-	g, err := generator.New(*repoRoot, *goPrefix)
+	g, err := generator.New(*repoRoot, *goPrefix, &rules.NoopNotifier{})
 	if err != nil {
 		return err
 	}
@@ -101,8 +102,8 @@ func main() {
 	}
 	if *goPrefix == "" {
 		var err error
-		if *goPrefix, err = loadGoPrefix(*repoRoot); err != nil {
-			log.Fatal(err)
+		if *goPrefix, err = util.GoPrefix(*repoRoot); err != nil {
+			log.Fatalf("-go_prefix is required: %v", err)
 		}
 	}
 
@@ -119,40 +120,6 @@ func main() {
 	if err := run(args, emit); err != nil {
 		log.Fatal(err)
 	}
-}
-
-func loadGoPrefix(repo string) (string, error) {
-	p := filepath.Join(repo, "BUILD")
-	b, err := ioutil.ReadFile(p)
-	if err != nil {
-		return "", err
-	}
-	f, err := bzl.Parse(p, b)
-	if err != nil {
-		return "", err
-	}
-	for _, s := range f.Stmt {
-		c, ok := s.(*bzl.CallExpr)
-		if !ok {
-			continue
-		}
-		l, ok := c.X.(*bzl.LiteralExpr)
-		if !ok {
-			continue
-		}
-		if l.Token != "go_prefix" {
-			continue
-		}
-		if len(c.List) != 1 {
-			return "", fmt.Errorf("found go_prefix(%v) with too many args", c.List)
-		}
-		v, ok := c.List[0].(*bzl.StringExpr)
-		if !ok {
-			return "", fmt.Errorf("found go_prefix(%v) which is not a string", c.List)
-		}
-		return v.Value, nil
-	}
-	return "", errors.New("-go_prefix is required")
 }
 
 func repo(args []string) (string, error) {

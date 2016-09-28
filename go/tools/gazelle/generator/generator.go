@@ -46,7 +46,7 @@ type Generator struct {
 // "repoRoot" is a path to the root directory of the repository.
 // "goPrefix" is the go_prefix corresponding to the repository root directory.
 // See also https://github.com/bazelbuild/rules_go#go_prefix.
-func New(repoRoot, goPrefix string) (*Generator, error) {
+func New(repoRoot, goPrefix string, n rules.Notifier) (*Generator, error) {
 	bctx := build.Default
 	// Ignore source files in $GOROOT and $GOPATH
 	bctx.GOROOT = ""
@@ -60,7 +60,7 @@ func New(repoRoot, goPrefix string) (*Generator, error) {
 		repoRoot: filepath.Clean(repoRoot),
 		goPrefix: goPrefix,
 		bctx:     bctx,
-		g:        rules.NewGenerator(goPrefix),
+		g:        rules.NewGenerator(goPrefix, n),
 	}, nil
 }
 

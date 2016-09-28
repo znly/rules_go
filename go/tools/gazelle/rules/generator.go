@@ -57,12 +57,12 @@ type Generator interface {
 //
 // "goPrefix" is the go_prefix corresponding to the repository root.
 // See also https://github.com/bazelbuild/rules_go#go_prefix.
-func NewGenerator(goPrefix string) Generator {
+func NewGenerator(goPrefix string, n Notifier) Generator {
 	var (
 		// TODO(yugui) Support another resolver to cover the pattern 2 in
 		// https://github.com/bazelbuild/rules_go/issues/16#issuecomment-216010843
 		r = structuredResolver{goPrefix: goPrefix}
-		e externalResolver
+		e = externalResolver{n}
 	)
 
 	return &generator{
@@ -167,10 +167,10 @@ func (g *generator) filegroup(rel string, pkg *build.Package) (*bzl.Rule, error)
 		return nil, err
 	}
 	if len(protos) == 0 {
-	   return nil, nil
+		return nil, nil
 	}
 	for i, p := range protos {
-	    protos[i] = filepath.Base(p)
+		protos[i] = filepath.Base(p)
 	}
 	return newRule("filegroup", nil, []keyvalue{
 		{key: "name", value: defaultProtosName},
