@@ -3,6 +3,8 @@ package wspace
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
+	"path/filepath"
 
 	bzl "github.com/bazelbuild/buildifier/core"
 	"github.com/bazelbuild/rules_go/go/tools/gazelle/rules"
@@ -22,6 +24,13 @@ type Workspace struct {
 }
 
 func Load(filename string) (*Workspace, error) {
+	fi, err := os.Stat(filename)
+	if err != nil {
+		return nil, err
+	}
+	if fi.IsDir() {
+		filename = filepath.Join(filename, "WORKSPACE")
+	}
 	b, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, err
@@ -37,11 +46,12 @@ func Load(filename string) (*Workspace, error) {
 	return &Workspace{f, ex}, nil
 }
 
-// Notify implements rules.Noftifier
+// Notify implements rules.Notifier
 func (w *Workspace) Notify(importpath, repoName string) {
-	// TODO
+
 }
 
+// Printer returns a rules.Notifier that just prints out any new dependencies.
 func (w *Workspace) Printer() rules.Notifier {
 	return &printer{w.existing}
 }

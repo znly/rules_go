@@ -44,8 +44,8 @@ var modeFromName = map[string]func(*bzl.File) error{
 	"diff":  diffFile,
 }
 
-func run(dirs []string, emit func(*bzl.File) error) error {
-	g, err := generator.New(*repoRoot, *goPrefix, &rules.NoopNotifier{})
+func run(dirs []string, emit func(*bzl.File) error, n rules.Notifier) error {
+	g, err := generator.New(*repoRoot, *goPrefix, n)
 	if err != nil {
 		return err
 	}
@@ -112,12 +112,30 @@ func main() {
 		log.Fatalf("unrecognized mode %s", *mode)
 	}
 
+	var n rules.Notifier
+	if *remote == "skip" {
+		n = &rules.NoopNotifier{}
+	} else {
+		ws, err := wspace.Load(*repoRoot)
+		if err != nil {
+			log.Fatalf("-remote=%s, but failed to load WORKSPACE: %v", *remote, err)
+		}
+		switch *remote {
+		case "print":
+			n = ws.Printer()
+		case "fix":
+			n = ws
+		default:
+			log.Fatalf("unknown -remote=%s [skip, print, fix]", *remote)
+		}
+	}
+
 	args := flag.Args()
 	if len(args) == 0 {
 		args = append(args, ".")
 	}
 
-	if err := run(args, emit); err != nil {
+	if err := run(args, emit, n); err != nil {
 		log.Fatal(err)
 	}
 }
