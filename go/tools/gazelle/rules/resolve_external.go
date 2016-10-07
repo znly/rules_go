@@ -27,7 +27,19 @@ var (
 	repoRootForImportPath = vcs.RepoRootForImportPath
 )
 
-type externalResolver struct{}
+// Notifier allows the external resolver to indicate all external dependencies.
+type Notifier interface {
+	Notify(importpath, repoName string)
+}
+
+// NoopNotifier is a do nothing implementer of Notifier
+type NoopNotifier struct{}
+
+func (*NoopNotifier) Notify(importpath, repoName string) {}
+
+type externalResolver struct {
+	n Notifier
+}
 
 // resolve resolves "importpath" into a label, assuming that it is a label in an
 // external repository. It also assumes that the external repository follows the
@@ -55,6 +67,7 @@ func (e externalResolver) resolve(importpath, dir string) (label, error) {
 	repo := strings.Join(append(reversed, components[1:]...), "_")
 	repo = strings.NewReplacer("-", "_", ".", "_").Replace(repo)
 
+	e.n.Notify(prefix, repo)
 	return label{
 		repo: repo,
 		pkg:  pkg,

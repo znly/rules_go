@@ -51,7 +51,7 @@ func packageFromDir(t *testing.T, dir string) *build.Package {
 }
 
 func TestGenerator(t *testing.T) {
-	g := rules.NewGenerator("example.com/repo")
+	g := rules.NewGenerator("example.com/repo", &rules.NoopNotifier{})
 	for _, spec := range []struct {
 		dir  string
 		want string
@@ -129,7 +129,7 @@ func TestGenerator(t *testing.T) {
 }
 
 func TestGeneratorGoPrefix(t *testing.T) {
-	g := rules.NewGenerator("example.com/repo/lib")
+	g := rules.NewGenerator("example.com/repo/lib", &rules.NoopNotifier{})
 	pkg := packageFromDir(t, filepath.FromSlash("lib"))
 	rules, err := g.Generate("", pkg)
 	if err != nil {

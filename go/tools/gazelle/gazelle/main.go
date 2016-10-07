@@ -26,6 +26,8 @@ import (
 
 	bzl "github.com/bazelbuild/buildifier/core"
 	"github.com/bazelbuild/rules_go/go/tools/gazelle/generator"
+	"github.com/bazelbuild/rules_go/go/tools/gazelle/rules"
+	"github.com/bazelbuild/rules_go/go/tools/gazelle/util"
 	"github.com/bazelbuild/rules_go/go/tools/gazelle/wspace"
 )
 
@@ -33,6 +35,7 @@ var (
 	goPrefix = flag.String("go_prefix", "", "go_prefix of the target workspace")
 	repoRoot = flag.String("repo_root", "", "path to a directory which corresponds to go_prefix, otherwise gazelle searches for it.")
 	mode     = flag.String("mode", "print", "print, fix or diff")
+	remote   = flag.String("remote", "skip", "What to do about missing remote WORKSPACE dependencies: skip, print, fix")
 )
 
 var modeFromName = map[string]func(*bzl.File) error{
@@ -41,8 +44,8 @@ var modeFromName = map[string]func(*bzl.File) error{
 	"diff":  diffFile,
 }
 
-func run(dirs []string, emit func(*bzl.File) error) error {
-	g, err := generator.New(*repoRoot, *goPrefix)
+func run(dirs []string, emit func(*bzl.File) error, n rules.Notifier) error {
+	g, err := generator.New(*repoRoot, *goPrefix, n)
 	if err != nil {
 		return err
 	}
@@ -98,9 +101,10 @@ func main() {
 		}
 	}
 	if *goPrefix == "" {
-		// TODO(yugui): Extract go_prefix from the top level BUILD file if
-		// exists
-		log.Fatal("-go_prefix is required")
+		var err error
+		if *goPrefix, err = util.GoPrefix(*repoRoot); err != nil {
+			log.Fatalf("-go_prefix is required: %v", err)
+		}
 	}
 
 	emit := modeFromName[*mode]
@@ -108,12 +112,30 @@ func main() {
 		log.Fatalf("unrecognized mode %s", *mode)
 	}
 
+	var n rules.Notifier
+	if *remote == "skip" {
+		n = &rules.NoopNotifier{}
+	} else {
+		ws, err := wspace.Load(*repoRoot)
+		if err != nil {
+			log.Fatalf("-remote=%s, but failed to load WORKSPACE: %v", *remote, err)
+		}
+		switch *remote {
+		case "print":
+			n = ws.Printer()
+		case "fix":
+			n = ws
+		default:
+			log.Fatalf("unknown -remote=%s [skip, print, fix]", *remote)
+		}
+	}
+
 	args := flag.Args()
 	if len(args) == 0 {
 		args = append(args, ".")
 	}
 
-	if err := run(args, emit); err != nil {
+	if err := run(args, emit, n); err != nil {
 		log.Fatal(err)
 	}
 }

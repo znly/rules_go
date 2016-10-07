@@ -26,7 +26,7 @@ import (
 func TestExternalResolver(t *testing.T) {
 	repoRootForImportPath = stubRepoRootForImportPath
 
-	var r externalResolver
+	r := externalResolver{&NoopNotifier{}}
 	for _, spec := range []struct {
 		importpath string
 		want       label
