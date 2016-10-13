@@ -39,7 +39,7 @@ go_proto_library(
 )
 """
 
-load("@io_bazel_rules_go//go:def.bzl", "go_library", "new_go_repository")
+load("//go:def.bzl", "go_library", "new_go_repository")
 
 _DEFAULT_LIB = "go_default_library"  # matching go_library
 
@@ -213,12 +213,16 @@ def go_proto_library(name, srcs = None, deps = None,
       **kwargs
   )
 
-def go_proto_repositories(shared = 1):
+# c.f. #135
+# TODO(yugui) Remove rules_go_repo_only_for_internal_use argument when we drop
+# support of Bazel 0.3.2.
+def go_proto_repositories(shared=1, rules_go_repo_only_for_internal_use=None):
   """Add this to your WORKSPACE to pull in all of the needed dependencies."""
   new_go_repository(
       name = "com_github_golang_protobuf",
       importpath = "github.com/golang/protobuf",
       commit = "1f49d83d9aa00e6ce4fc8258c71cc7786aec968a",
+      rules_go_repo_only_for_internal_use = rules_go_repo_only_for_internal_use,
   )
   if shared:
     # if using multiple *_proto_library, allows caller to skip this.
@@ -233,9 +237,11 @@ def go_proto_repositories(shared = 1):
       name = "org_golang_x_net",
       commit = "de35ec43e7a9aabd6a9c54d2898220ea7e44de7d",
       importpath = "golang.org/x/net",
+      rules_go_repo_only_for_internal_use = rules_go_repo_only_for_internal_use,
   )
   new_go_repository(
       name = "org_golang_google_grpc",
       tag = "v1.0.1-GA",
       importpath = "google.golang.org/grpc",
+      rules_go_repo_only_for_internal_use = rules_go_repo_only_for_internal_use,
   )

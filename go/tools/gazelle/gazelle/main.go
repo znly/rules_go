@@ -38,6 +38,12 @@ var (
 	mode     = flag.String("mode", "fix", "print: prints all of the updated BUILD files\n\tfix: rewrites all of the BUILD files in place\n\tdiff: computes the rewrite but then just does a diff")
 )
 
+func init() {
+	// See also #135.
+	// TODO(yugui): Remove this flag when we drop support of Bazel 0.3.2
+	flag.StringVar(&generator.GoRulesBzl, "go_rules_bzl_only_for_internal_use", "@io_bazel_rules_go//go:def.bzl", "hacky flag to build rules_go repository itself")
+}
+
 var modeFromName = map[string]func(*bzl.File) error{
 	"print": printFile,
 	"fix":   fixFile,
