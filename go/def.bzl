@@ -499,6 +499,14 @@ go_env_attrs = {
         allow_files = True,
         cfg = "host",
     ),
+    "go_root": attr.label(
+        providers = ["go_root"],
+        default = Label(
+            "//go/toolchain:go_root",
+        ),
+        allow_files = False,
+        cfg = "host",
+    ),
 }
 
 go_library_attrs = go_env_attrs + {

@@ -117,6 +117,8 @@ _go_repository_tools = repository_rule(
 )
 
 GO_TOOLCHAIN_BUILD_FILE = """
+load("@io_bazel_rules_go//go/private:go_root.bzl", "go_root")
+
 package(
   default_visibility = [ "//visibility:public" ])
 
@@ -134,22 +136,36 @@ filegroup(
   name = "go_include",
   srcs = [ "pkg/include" ],
 )
+
+go_root(
+  name = "go_root",
+  path = "{goroot}",
+)
 """
 
-
 def _go_repository_select_impl(ctx):
-  os = ctx.os.name
-  # NOTE: This mapping cannot be table-driven to prevent
-  # Bazel from downloading the other archive.
-  if os == 'linux':
+  os_name = ctx.os.name
+
+  # 1. Configure the goroot path
+  if os_name == 'linux':
     goroot = ctx.path(ctx.attr._linux).dirname
-  elif os == 'mac os x':
+  elif os_name == 'mac os x':
     goroot = ctx.path(ctx.attr._darwin).dirname
   else:
-    fail("unsupported operating system: " + os)
+    fail("Unsupported operating system: " + os_name)
 
-  ctx.symlink(goroot, ctx.path(''))
-  ctx.file("WORKSPACE", "workspace(name = '%s')" % ctx.name)
+  # 2. Create the symlinks and write the BUILD file.
+  gobin = goroot.get_child("bin")
+  gopkg = goroot.get_child("pkg")
+  gosrc = goroot.get_child("src")
+  ctx.symlink(gobin, "bin")
+  ctx.symlink(gopkg, "pkg")
+  ctx.symlink(gosrc, "src")
+
+  ctx.file("BUILD", GO_TOOLCHAIN_BUILD_FILE.format(
+    goroot = goroot,
+  ))
+
 
 _go_repository_select = repository_rule(
     _go_repository_select_impl,
@@ -172,7 +188,7 @@ def go_repositories():
   native.new_http_archive(
       name =  "golang_linux_amd64",
       url = "https://storage.googleapis.com/golang/go1.7.1.linux-amd64.tar.gz",
-      build_file_content = GO_TOOLCHAIN_BUILD_FILE,
+      build_file_content = "",
       sha256 = "43ad621c9b014cde8db17393dc108378d37bc853aa351a6c74bf6432c1bbd182",
       strip_prefix = "go",
   )
@@ -180,7 +196,7 @@ def go_repositories():
   native.new_http_archive(
       name = "golang_darwin_amd64",
       url = "https://storage.googleapis.com/golang/go1.7.1.darwin-amd64.tar.gz",
-      build_file_content = GO_TOOLCHAIN_BUILD_FILE,
+      build_file_content = "",
       sha256 = "9fd80f19cc0097f35eaa3a52ee28795c5371bb6fac69d2acf70c22c02791f912",
       strip_prefix = "go",
   )
