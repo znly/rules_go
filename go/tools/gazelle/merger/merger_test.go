@@ -21,6 +21,7 @@ go_test(
     name = "go_default_test",
     size = "small",
     srcs = [
+        "gen_test.go",  # keep
         "parse_test.go",
     ],
     data = glob(["testdata/*"]),
@@ -69,6 +70,7 @@ go_test(
     srcs = [
         "parse_test.go",
         "print_test.go",
+        "gen_test.go",  # keep
     ],
     data = glob(["testdata/*"]),
     library = ":go_default_library",

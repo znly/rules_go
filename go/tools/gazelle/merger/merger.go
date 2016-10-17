@@ -21,9 +21,12 @@ import (
 	"io/ioutil"
 	"os"
 	"sort"
+	"strings"
 
 	bzl "github.com/bazelbuild/buildifier/core"
 )
+
+const keep = "# keep" // marker in srcs or deps to tell gazelle to preserve.
 
 var (
 	mergeableFields = map[string]bool{
@@ -81,8 +84,29 @@ func merge(src, dest *bzl.CallExpr) {
 		if !mergeableFields[k] {
 			continue
 		}
-		// TODO(pmbethe09): allow '# keep' on src files.
+		keepIfRequested(srcRule.Attr(k), destRule.Attr(k))
 		destRule.SetAttr(k, srcRule.Attr(k))
+	}
+}
+
+// keepIfRequested takes two ListExpr and looks for any '# keep' suffixes in discard to preserve
+func keepIfRequested(replace, discard bzl.Expr) {
+	r, ok := replace.(*bzl.ListExpr)
+	if !ok {
+		return
+	}
+	d, ok := discard.(*bzl.ListExpr)
+	if !ok {
+		return
+	}
+	for _, v := range d.List {
+		c := v.Comment()
+		if len(c.Suffix) == 0 {
+			continue
+		}
+		if strings.HasPrefix(c.Suffix[0].Token, keep) {
+			r.List = append(r.List, v)
+		}
 	}
 }
 
