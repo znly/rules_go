@@ -34,9 +34,12 @@ type externalResolver struct{}
 // recommended reverse-DNS form of workspace name as described in
 // http://bazel.io/docs/be/functions.html#workspace.
 func (e externalResolver) resolve(importpath, dir string) (label, error) {
-	r, err := repoRootForImportPath(importpath, false)
-	if err != nil {
-		return label{}, err
+	r := specialCases(importpath)
+	if r == nil {
+		var err error
+		if r, err = repoRootForImportPath(importpath, false); err != nil {
+			return label{}, err
+		}
 	}
 
 	prefix := r.Root
@@ -60,4 +63,27 @@ func (e externalResolver) resolve(importpath, dir string) (label, error) {
 		pkg:  pkg,
 		name: defaultLibName,
 	}, nil
+}
+
+// knownImports are paths which are not static in the vcs package,
+// to allow load balancing between actual repos,
+// but for our case we only need to break the importpath in a known fashion.
+var knownImports = []string{"golang.org/x/", "google.golang.org/", "cloud.google.com/"}
+
+// specialCases looks for matches in knownImports to avoid making a network call.
+func specialCases(importpath string) *vcs.RepoRoot {
+	for _, known := range knownImports {
+		if strings.HasPrefix(importpath, known) {
+			l := len(known)
+			if idx := strings.Index(importpath[l:], "/"); idx != -1 {
+				return &vcs.RepoRoot{
+					Root: importpath[:l+idx],
+				}
+			}
+			return &vcs.RepoRoot{
+				Root: importpath,
+			}
+		}
+	}
+	return nil
 }
