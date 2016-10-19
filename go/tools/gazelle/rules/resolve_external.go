@@ -34,15 +34,15 @@ type externalResolver struct{}
 // recommended reverse-DNS form of workspace name as described in
 // http://bazel.io/docs/be/functions.html#workspace.
 func (e externalResolver) resolve(importpath, dir string) (label, error) {
-	r := specialCases(importpath)
-	if r == nil {
-		var err error
-		if r, err = repoRootForImportPath(importpath, false); err != nil {
+	prefix := specialCases(importpath)
+	if prefix == "" {
+		r, err := repoRootForImportPath(importpath, false)
+		if err != nil {
 			return label{}, err
 		}
+		prefix = r.Root
 	}
 
-	prefix := r.Root
 	var pkg string
 	if importpath != prefix {
 		pkg = strings.TrimPrefix(importpath, prefix+"/")
@@ -71,19 +71,16 @@ func (e externalResolver) resolve(importpath, dir string) (label, error) {
 var knownImports = []string{"golang.org/x/", "google.golang.org/", "cloud.google.com/"}
 
 // specialCases looks for matches in knownImports to avoid making a network call.
-func specialCases(importpath string) *vcs.RepoRoot {
+func specialCases(importpath string) string {
 	for _, known := range knownImports {
-		if strings.HasPrefix(importpath, known) {
-			l := len(known)
-			if idx := strings.Index(importpath[l:], "/"); idx != -1 {
-				return &vcs.RepoRoot{
-					Root: importpath[:l+idx],
-				}
-			}
-			return &vcs.RepoRoot{
-				Root: importpath,
-			}
+		if !strings.HasPrefix(importpath, known) {
+			continue
 		}
+		l := len(known)
+		if idx := strings.Index(importpath[l:], "/"); idx != -1 {
+			return importpath[:l+idx]
+		}
+		return importpath
 	}
-	return nil
+	return ""
 }
