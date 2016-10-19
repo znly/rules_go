@@ -187,7 +187,7 @@ _go_repository_select = repository_rule(
 # c.f. #135
 # TODO(yugui) remove the attribute rules_go_repo_only_for_internal_use when we
 # drop support of Bazel 0.3.2
-def go_repositories(rules_go_repo_only_for_internal_use):
+def go_repositories(rules_go_repo_only_for_internal_use = "@io_bazel_rules_go"):
   native.new_http_archive(
       name =  "golang_linux_amd64",
       url = "https://storage.googleapis.com/golang/go1.7.1.linux-amd64.tar.gz",
