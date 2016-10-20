@@ -23,6 +23,24 @@ import (
 	"golang.org/x/tools/go/vcs"
 )
 
+type special struct {
+	in, want string
+}
+
+func TestSpecialCases(t *testing.T) {
+	for _, c := range []special{
+		{"golang.org/x/net/context", "golang.org/x/net"},
+		{"golang.org/x/tools/go/vcs", "golang.org/x/tools"},
+		{"golang.org/x/goimports", "golang.org/x/goimports"},
+		{"cloud.google.com/fashion/industry", "cloud.google.com/fashion"},
+		{"unsupported.org/x/net/context", ""},
+	} {
+		if got := specialCases(c.in); got != c.want {
+			t.Errorf("specialCases(%q) = %q; want %q", c.in, got, c.want)
+		}
+	}
+}
+
 func TestExternalResolver(t *testing.T) {
 	repoRootForImportPath = stubRepoRootForImportPath
 
