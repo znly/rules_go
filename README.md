@@ -15,6 +15,7 @@ Bazel ≥0.3.1 | linux-x86_64 | ubuntu_15.10-x86_64 | darwin-x86_64
     <li><a href="#cgo_library">cgo_library</a></li>
     <li><a href="#go_binary">go_binary</a></li>
     <li><a href="#go_test">go_test</a></li>
+    <li><a href="#go_proto_library">go_proto_library</a></li>
   </ul>
 </div>
 
@@ -27,12 +28,14 @@ The rules should be considered experimental. They support:
 * tests
 * vendoring
 * cgo
+* auto generating BUILD files via gazelle
+* protocol buffers (via extension //proto:go_proto_library.bzl)
 
 They currently do not support (in order of importance):
 
 * build constraints/tags (`//+build` comments - see <a
   href="https://golang.org/pkg/go/build/">here</a>))
-* auto generating BUILD files
+* bazel-style auto generating BUILD (where the library name is other than go_default_library)
 * C/C++ interoperation except cgo (swig etc.)
 * race detector
 * coverage
@@ -47,7 +50,7 @@ They currently do not support (in order of importance):
     git_repository(
         name = "io_bazel_rules_go",
         remote = "https://github.com/bazelbuild/rules_go.git",
-        tag = "0.2.0",
+        tag = "0.3.0",
     )
     load("@io_bazel_rules_go//go:def.bzl", "go_repositories")
 
@@ -525,6 +528,61 @@ go_test(name, srcs, deps, data)
       <td>
         <code>List of labels, optional</code>
         <p>List of files needed by this rule at runtime.</p>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+
+
+....
+<a name="go_proto_library"></a>
+## go\_proto\_library
+
+```bzl
+go_proto_library(name, srcs, deps, has_services)
+```
+<table class="table table-condensed table-bordered table-params">
+  <colgroup>
+    <col class="col-param" />
+    <col class="param-description" />
+  </colgroup>
+  <thead>
+    <tr>
+      <th colspan="2">Attributes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>name</code></td>
+      <td>
+        <code>Name, required</code>
+        <p>A unique name for the underlying go_library rule.</p>
+      </td>
+    </tr>
+    <tr>
+      <td><code>srcs</code></td>
+      <td>
+        <code>List of labels, required</code>
+        <p>List of Protocol Buffer <code>.proto</code>
+        source files used to generate <code>.go</code> sources for a go_library</p>
+      </td>
+    </tr>
+    <tr>
+      <td><code>deps</code></td>
+      <td>
+        <code>List of labels, optional</code>
+        <p>List of other go_proto_library(s) to depend on.  
+        Note: this also works if the label is a go_library,
+        and there is a filegroup {name}+"_protos" (which is used for golang protobuf)</p>
+      </td>
+    </tr>
+    <tr>
+      <td><code>has_services</code></td>
+      <td>
+        <code>integer, optional, defaults to 0</code>
+        <p>If 1, will generate with <code>plugins=grpc</code>
+        and add the required dependencies.</p>
       </td>
     </tr>
   </tbody>
