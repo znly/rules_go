@@ -626,9 +626,11 @@ def _cgo_codegen_impl(ctx):
   for s in srcs:
     tree_layout[s.path] = _short_path(s)
 
+  p = _pkg_dir(ctx.label.workspace_root, ctx.label.package) + "/"
+  if p == "./":
+    p = "" # workaround when cgo_library in repository root
   out_dir = (ctx.configuration.genfiles_dir.path + '/' +
-             _pkg_dir(ctx.label.workspace_root, ctx.label.package) + "/" +
-             ctx.attr.outdir)
+             p + ctx.attr.outdir)
   cc = ctx.fragments.cpp.compiler_executable
   cmds = symlink_tree_commands(out_dir + "/src", tree_layout) + [
       "export GOROOT=$(pwd)/" + ctx.file.go_tool.dirname + "/..",
