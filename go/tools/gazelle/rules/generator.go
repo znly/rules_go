@@ -18,6 +18,7 @@ package rules
 import (
 	"fmt"
 	"go/build"
+	"log"
 	"path"
 	"path/filepath"
 	"strings"
@@ -39,6 +40,8 @@ const (
 	// defaultProtosName is the name of a filegroup created
 	// whenever the library contains .pb.go files
 	defaultProtosName = "go_default_library_protos"
+	// defaultCgoLibName is the name of the default cgo_library rule in a Go package directory.
+	defaultCgoLibName = "cgo_default_library"
 )
 
 // Generator generates Bazel build rules for Go build targets
@@ -91,15 +94,25 @@ func (g *generator) Generate(rel string, pkg *build.Package) ([]*bzl.Rule, error
 		rules = append(rules, p)
 	}
 
-	libName := defaultLibName
-	r, err := g.generateLib(rel, libName, pkg)
+	cgoLibrary := ""
+	if len(pkg.CgoFiles) != 0 {
+		cgoLibrary = defaultCgoLibName
+		r, err := g.generateCgoCLib(rel, cgoLibrary, pkg)
+		if err != nil {
+			return nil, err
+		}
+		rules = append(rules, r)
+	}
+
+	library := defaultLibName
+	r, err := g.generateLib(rel, library, pkg, cgoLibrary)
 	if err != nil {
 		return nil, err
 	}
 	rules = append(rules, r)
 
 	if pkg.IsCommand() {
-		r, err := g.generateBin(rel, libName, pkg)
+		r, err := g.generateBin(rel, library, pkg)
 		if err != nil {
 			return nil, err
 		}
@@ -115,7 +128,7 @@ func (g *generator) Generate(rel string, pkg *build.Package) ([]*bzl.Rule, error
 	}
 
 	if len(pkg.TestGoFiles) > 0 {
-		t, err := g.generateTest(rel, pkg, r.AttrString("name"))
+		t, err := g.generateTest(rel, pkg, library)
 		if err != nil {
 			return nil, err
 		}
@@ -123,7 +136,7 @@ func (g *generator) Generate(rel string, pkg *build.Package) ([]*bzl.Rule, error
 	}
 
 	if len(pkg.XTestGoFiles) > 0 {
-		t, err := g.generateXTest(rel, pkg, r.AttrString("name"))
+		t, err := g.generateXTest(rel, pkg, library)
 		if err != nil {
 			return nil, err
 		}
@@ -146,7 +159,7 @@ func (g *generator) generateBin(rel, library string, pkg *build.Package) (*bzl.R
 	return newRule(kind, nil, attrs)
 }
 
-func (g *generator) generateLib(rel, name string, pkg *build.Package) (*bzl.Rule, error) {
+func (g *generator) generateLib(rel, name string, pkg *build.Package, cgoName string) (*bzl.Rule, error) {
 	kind := "go_library"
 
 	visibility := "//visibility:public"
@@ -154,13 +167,75 @@ func (g *generator) generateLib(rel, name string, pkg *build.Package) (*bzl.Rule
 	if pkg.IsCommand() {
 		visibility = "//visibility:private"
 	}
-	visibility = checkInternalVisibility(rel, visibility)
 
 	attrs := []keyvalue{
 		{key: "name", value: name},
-		{key: "srcs", value: append(pkg.GoFiles, pkg.SFiles...)},
-		{key: "visibility", value: []string{visibility}},
 	}
+
+	if cgoName == "" {
+		srcs := append([]string{}, pkg.GoFiles...)
+		srcs = append(srcs, pkg.SFiles...)
+		attrs = append(attrs, keyvalue{key: "srcs", value: srcs})
+	} else {
+		// go_library gets mad when an empty slice is passed in, but handles not
+		// being set at all just fine when "library" is set.
+		if len(pkg.GoFiles) != 0 {
+			attrs = append(attrs, keyvalue{key: "srcs", value: pkg.GoFiles})
+		}
+		attrs = append(attrs, keyvalue{key: "library", value: ":" + cgoName})
+	}
+	visibility = checkInternalVisibility(rel, visibility)
+
+	attrs = append(attrs, keyvalue{key: "visibility", value: []string{visibility}})
+
+	deps, err := g.dependencies(pkg.Imports, rel)
+	if err != nil {
+		return nil, err
+	}
+	if len(deps) > 0 {
+		attrs = append(attrs, keyvalue{key: "deps", value: deps})
+	}
+
+	return newRule(kind, nil, attrs)
+}
+
+// generateCgoCLib generates a cgo_library rule for C/C++ code.
+func (g *generator) generateCgoCLib(rel, name string, pkg *build.Package) (*bzl.Rule, error) {
+	kind := "cgo_library"
+
+	attrs := []keyvalue{
+		{key: "name", value: name},
+	}
+
+	if len(pkg.MFiles) != 0 {
+		log.Printf("warning: %s has Objective-C files but rules_go does not yet support Objective-C", rel)
+	}
+	if len(pkg.FFiles) != 0 {
+		log.Printf("warning: %s has Fortran files but rules_go does not yet support Fortran", rel)
+	}
+	if len(pkg.SwigFiles) != 0 || len(pkg.SwigCXXFiles) != 0 {
+		log.Printf("warning: %s has SWIG files but rules_go does not yet support SWIG", rel)
+	}
+
+	srcs := append([]string{}, pkg.CgoFiles...)
+	srcs = append(srcs, pkg.CFiles...)
+	srcs = append(srcs, pkg.CXXFiles...)
+	srcs = append(srcs, pkg.HFiles...)
+	srcs = append(srcs, pkg.SFiles...)
+	attrs = append(attrs, keyvalue{key: "srcs", value: srcs})
+
+	copts := append([]string{}, pkg.CgoCFLAGS...)
+	copts = append(copts, pkg.CgoCPPFLAGS...)
+	copts = append(copts, pkg.CgoCXXFLAGS...)
+	if len(copts) > 0 {
+		attrs = append(attrs, keyvalue{key: "copts", value: copts})
+	}
+	if len(pkg.CgoLDFLAGS) > 0 {
+		attrs = append(attrs, keyvalue{key: "clinkopts", value: pkg.CgoLDFLAGS})
+	}
+
+	visibility := checkInternalVisibility(rel, "//visibility:private")
+	attrs = append(attrs, keyvalue{key: "visibility", value: []string{visibility}})
 
 	deps, err := g.dependencies(pkg.Imports, rel)
 	if err != nil {

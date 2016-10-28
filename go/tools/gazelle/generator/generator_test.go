@@ -91,6 +91,40 @@ func TestGenerator(t *testing.T) {
 					},
 				},
 			},
+			"cgolib": {
+				{
+					Call: &bzl.CallExpr{
+						X: &bzl.LiteralExpr{Token: "cgo_library"},
+					},
+				},
+				{
+					Call: &bzl.CallExpr{
+						X: &bzl.LiteralExpr{Token: "go_library"},
+					},
+				},
+				{
+					Call: &bzl.CallExpr{
+						X: &bzl.LiteralExpr{Token: "go_test"},
+					},
+				},
+			},
+			"allcgolib": {
+				{
+					Call: &bzl.CallExpr{
+						X: &bzl.LiteralExpr{Token: "cgo_library"},
+					},
+				},
+				{
+					Call: &bzl.CallExpr{
+						X: &bzl.LiteralExpr{Token: "go_library"},
+					},
+				},
+				{
+					Call: &bzl.CallExpr{
+						X: &bzl.LiteralExpr{Token: "go_test"},
+					},
+				},
+			},
 		},
 	}
 
@@ -161,11 +195,29 @@ func TestGenerator(t *testing.T) {
 				stub.fixtures["bin_with_tests"][2].Call,
 			},
 		},
+		{
+			Path: "cgolib/BUILD",
+			Stmt: []bzl.Expr{
+				loadExpr("go_library", "go_test", "cgo_library"),
+				stub.fixtures["cgolib"][0].Call,
+				stub.fixtures["cgolib"][1].Call,
+				stub.fixtures["cgolib"][2].Call,
+			},
+		},
+		{
+			Path: "allcgolib/BUILD",
+			Stmt: []bzl.Expr{
+				loadExpr("go_library", "go_test", "cgo_library"),
+				stub.fixtures["cgolib"][0].Call,
+				stub.fixtures["cgolib"][1].Call,
+				stub.fixtures["cgolib"][2].Call,
+			},
+		},
 	}
 	sort.Sort(fileSlice(want))
 
 	if !reflect.DeepEqual(got, want) {
-		t.Errorf("g.Generate(%q) = %s; want %s", repo, prettyFiles(got), prettyFiles(want))
+		t.Errorf("g.Generate(%q) = %s; want: %s", repo, prettyFiles(got), prettyFiles(want))
 	}
 }
 

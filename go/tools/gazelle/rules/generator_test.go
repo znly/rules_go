@@ -144,6 +144,69 @@ func TestGenerator(t *testing.T) {
 				)
 			`,
 		},
+		{
+			dir: "cgolib",
+			want: `
+				cgo_library(
+					name = "cgo_default_library",
+					srcs = [
+						"foo.go",
+						"foo.c",
+						"foo.h",
+						"asm.S",
+					],
+					copts = ["-I/weird/path"],
+					clinkopts = ["-lweird"],
+					visibility = ["//visibility:private"],
+					deps = [
+						"//lib:go_default_library",
+						"//lib/deep:go_default_library",
+					],
+				)
+
+				go_library(
+					name = "go_default_library",
+					srcs = ["pure.go"],
+					library = ":cgo_default_library",
+					visibility = ["//visibility:public"],
+					deps = [
+						"//lib:go_default_library",
+						"//lib/deep:go_default_library",
+					],
+				)
+
+				go_test(
+					name = "go_default_test",
+					srcs = ["foo_test.go"],
+					library = ":go_default_library",
+				)
+			`},
+		{
+			dir: "allcgolib",
+			want: `
+				cgo_library(
+					name = "cgo_default_library",
+					srcs = [
+						"foo.go",
+						"foo.c",
+					],
+					visibility = ["//visibility:private"],
+					deps = ["//lib:go_default_library"],
+				)
+
+				go_library(
+					name = "go_default_library",
+					library = ":cgo_default_library",
+					visibility = ["//visibility:public"],
+					deps = ["//lib:go_default_library"],
+				)
+
+				go_test(
+					name = "go_default_test",
+					srcs = ["foo_test.go"],
+					library = ":go_default_library",
+				)
+			`},
 	} {
 		pkg := packageFromDir(t, filepath.FromSlash(spec.dir))
 		rules, err := g.Generate(spec.dir, pkg)

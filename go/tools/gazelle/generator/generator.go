@@ -149,7 +149,7 @@ func (g *Generator) generateLoad(f *bzl.File) bzl.Expr {
 		"go_library",
 		"go_binary",
 		"go_test",
-		// TODO(yugui): Support cgo_library
+		"cgo_library",
 	} {
 		if len(f.Rules(kind)) > 0 {
 			list = append(list, kind)
