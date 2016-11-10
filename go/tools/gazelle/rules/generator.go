@@ -105,11 +105,13 @@ func (g *generator) Generate(rel string, pkg *build.Package) ([]*bzl.Rule, error
 	}
 
 	library := defaultLibName
-	r, err := g.generateLib(rel, library, pkg, cgoLibrary)
+	libRule, err := g.generateLib(rel, library, pkg, cgoLibrary)
 	if err != nil {
 		return nil, err
 	}
-	rules = append(rules, r)
+	if libRule != nil {
+		rules = append(rules, libRule)
+	}
 
 	if pkg.IsCommand() {
 		r, err := g.generateBin(rel, library, pkg)
@@ -128,7 +130,7 @@ func (g *generator) Generate(rel string, pkg *build.Package) ([]*bzl.Rule, error
 	}
 
 	if len(pkg.TestGoFiles) > 0 {
-		t, err := g.generateTest(rel, pkg, library)
+		t, err := g.generateTest(rel, pkg, library, libRule != nil)
 		if err != nil {
 			return nil, err
 		}
@@ -176,6 +178,9 @@ func (g *generator) generateLib(rel, name string, pkg *build.Package, cgoName st
 		srcs := append([]string{}, pkg.GoFiles...)
 		srcs = append(srcs, pkg.SFiles...)
 		attrs = append(attrs, keyvalue{key: "srcs", value: srcs})
+		if len(srcs) == 0 {
+			return nil, nil
+		}
 	} else {
 		// go_library gets mad when an empty slice is passed in, but handles not
 		// being set at all just fine when "library" is set.
@@ -292,7 +297,7 @@ func hasPbGo(files []string) bool {
 	return false
 }
 
-func (g *generator) generateTest(rel string, pkg *build.Package, library string) (*bzl.Rule, error) {
+func (g *generator) generateTest(rel string, pkg *build.Package, library string, hasLib bool) (*bzl.Rule, error) {
 	name := library + "_test"
 	if library == defaultLibName {
 		name = defaultTestName
@@ -300,7 +305,9 @@ func (g *generator) generateTest(rel string, pkg *build.Package, library string)
 	attrs := []keyvalue{
 		{key: "name", value: name},
 		{key: "srcs", value: pkg.TestGoFiles},
-		{key: "library", value: ":" + library},
+	}
+	if hasLib {
+		attrs = append(attrs, keyvalue{key: "library", value: ":" + library})
 	}
 
 	deps, err := g.dependencies(pkg.TestImports, rel)
