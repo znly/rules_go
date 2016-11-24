@@ -113,7 +113,7 @@ def _go_proto_library_gen_impl(ctx):
     offset = -1  # extra directory added, need to remove
     proto_outs = [
         ctx.new_file(
-            ctx.configuration.bin_dir,
+            ctx.configuration.genfiles_dir,
             s.basename[:-len(".proto")] + ".pb.go")
         for s in ctx.files.srcs
     ]
@@ -176,6 +176,7 @@ _go_proto_library_gen = rule(
             cfg = "host",
         ),
     },
+    output_to_genfiles = True,
     implementation = _go_proto_library_gen_impl,
 )
 
