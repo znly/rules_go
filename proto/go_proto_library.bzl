@@ -291,27 +291,28 @@ def go_proto_repositories(shared=1, rules_go_repo_only_for_internal_use=None):
   new_go_repository(
       name = "com_github_golang_protobuf",
       importpath = "github.com/golang/protobuf",
-      commit = "1f49d83d9aa00e6ce4fc8258c71cc7786aec968a",
+      commit = "8ee79997227bf9b34611aee7946ae64735e6fd93",
       rules_go_repo_only_for_internal_use = rules_go_repo_only_for_internal_use,
   )
   if shared:
     # if using multiple *_proto_library, allows caller to skip this.
-    native.git_repository(
+    native.http_archive(
         name = "com_github_google_protobuf",
-        remote = "https://github.com/google/protobuf",
-        commit = "008b5a228b37c054f46ba478ccafa5e855cb16db",
+        url = "https://github.com/google/protobuf/archive/v3.1.0.tar.gz",
+        strip_prefix = "protobuf-3.1.0",
+        sha256 = "0a0ae63cbffc274efb573bdde9a253e3f32e458c41261df51c5dbc5ad541e8f7",
     )
 
   # Needed for gRPC, only loaded by bazel if used
   new_go_repository(
       name = "org_golang_x_net",
-      commit = "de35ec43e7a9aabd6a9c54d2898220ea7e44de7d",
+      commit = "4971afdc2f162e82d185353533d3cf16188a9f4e",
       importpath = "golang.org/x/net",
       rules_go_repo_only_for_internal_use = rules_go_repo_only_for_internal_use,
   )
   new_go_repository(
       name = "org_golang_google_grpc",
-      tag = "v1.0.1-GA",
+      tag = "v1.0.4",
       importpath = "google.golang.org/grpc",
       rules_go_repo_only_for_internal_use = rules_go_repo_only_for_internal_use,
   )
