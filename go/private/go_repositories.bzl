@@ -59,7 +59,7 @@ def _fetch_repository_tools_deps(ctx, goroot, gopath):
       'env', 'GOROOT=%s' % goroot, 'GOPATH=%s' % gopath, 'PATH=%s/bin' % goroot,
       'go', 'generate', 'github.com/bazelbuild/buildifier/core'])
   if result.return_code:
-    fail("failed to go genrate: %s" % result.stderr)
+    fail("failed to go generate: %s" % result.stderr)
 
 _GO_REPOSITORY_TOOLS_BUILD_FILE = """
 package(default_visibility = ["//visibility:public"])
