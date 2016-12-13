@@ -33,9 +33,15 @@ import (
 )
 
 var (
-	goPrefix = flag.String("go_prefix", "", "go_prefix of the target workspace")
-	repoRoot = flag.String("repo_root", "", "path to a directory which corresponds to go_prefix, otherwise gazelle searches for it.")
-	mode     = flag.String("mode", "fix", "print: prints all of the updated BUILD files\n\tfix: rewrites all of the BUILD files in place\n\tdiff: computes the rewrite but then just does a diff")
+	goPrefix  = flag.String("go_prefix", "", "go_prefix of the target workspace")
+	repoRoot  = flag.String("repo_root", "", "path to a directory which corresponds to go_prefix, otherwise gazelle searches for it.")
+	mode      = flag.String("mode", "fix", "print: prints all of the updated BUILD files\n\tfix: rewrites all of the BUILD files in place\n\tdiff: computes the rewrite but then just does a diff")
+	buildName = flag.String("build_name", "BUILD", "name of output build files to generate, defaults to 'BUILD'")
+
+	validBuildNames = map[string]bool{
+		"BUILD":       true,
+		"BUILD.bazel": true,
+	}
 )
 
 func init() {
@@ -51,7 +57,7 @@ var modeFromName = map[string]func(*bzl.File) error{
 }
 
 func run(dirs []string, emit func(*bzl.File) error) error {
-	g, err := generator.New(*repoRoot, *goPrefix)
+	g, err := generator.New(*repoRoot, *goPrefix, *buildName)
 	if err != nil {
 		return err
 	}
@@ -120,6 +126,10 @@ func main() {
 		}
 	}
 
+	if !validBuildNames[*buildName] {
+		log.Fatalf("-build_name %q must be in: %v", *buildName, validBuildNames)
+	}
+
 	emit := modeFromName[*mode]
 	if emit == nil {
 		log.Fatalf("unrecognized mode %s", *mode)
@@ -135,9 +145,23 @@ func main() {
 	}
 }
 
+func readBuild(root string) (data []byte, location string, _ error) {
+	for n := range validBuildNames {
+		p := filepath.Join(root, n)
+		b, err := ioutil.ReadFile(p)
+		if err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			return nil, "", err
+		}
+		return b, p, nil
+	}
+	return nil, "", fmt.Errorf("no build files found at %q", root)
+}
+
 func loadGoPrefix(repo string) (string, error) {
-	p := filepath.Join(repo, "BUILD")
-	b, err := ioutil.ReadFile(p)
+	b, p, err := readBuild(repo)
 	if err != nil {
 		return "", err
 	}

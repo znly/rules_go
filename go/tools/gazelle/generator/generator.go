@@ -39,10 +39,11 @@ var (
 
 // Generator generates BUILD files for a Go repository.
 type Generator struct {
-	repoRoot string
-	goPrefix string
-	bctx     build.Context
-	g        rules.Generator
+	repoRoot  string
+	goPrefix  string
+	buildName string
+	bctx      build.Context
+	g         rules.Generator
 }
 
 // New returns a new Generator which is responsible for a Go repository.
@@ -50,7 +51,7 @@ type Generator struct {
 // "repoRoot" is a path to the root directory of the repository.
 // "goPrefix" is the go_prefix corresponding to the repository root directory.
 // See also https://github.com/bazelbuild/rules_go#go_prefix.
-func New(repoRoot, goPrefix string) (*Generator, error) {
+func New(repoRoot, goPrefix, buildName string) (*Generator, error) {
 	bctx := build.Default
 	// Ignore source files in $GOROOT and $GOPATH
 	bctx.GOROOT = ""
@@ -66,10 +67,11 @@ func New(repoRoot, goPrefix string) (*Generator, error) {
 		return nil, err
 	}
 	return &Generator{
-		repoRoot: filepath.Clean(repoRoot),
-		goPrefix: goPrefix,
-		bctx:     bctx,
-		g:        rules.NewGenerator(goPrefix),
+		repoRoot:  filepath.Clean(repoRoot),
+		goPrefix:  goPrefix,
+		buildName: buildName,
+		bctx:      bctx,
+		g:         rules.NewGenerator(goPrefix),
 	}, nil
 }
 
@@ -99,7 +101,7 @@ func (g *Generator) Generate(dir string) ([]*bzl.File, error) {
 		if len(files) == 0 && rel != "" {
 			// "dir" was not a buildable Go package but still need a BUILD file
 			// for go_prefix.
-			files = append(files, emptyToplevel(g.goPrefix))
+			files = append(files, emptyToplevel(g.goPrefix, g.buildName))
 		}
 
 		file, err := g.generateOne(rel, pkg)
@@ -116,9 +118,9 @@ func (g *Generator) Generate(dir string) ([]*bzl.File, error) {
 	return files, nil
 }
 
-func emptyToplevel(goPrefix string) *bzl.File {
+func emptyToplevel(goPrefix, buildName string) *bzl.File {
 	return &bzl.File{
-		Path: "BUILD",
+		Path: buildName,
 		Stmt: []bzl.Expr{
 			loadExpr("go_prefix"),
 			&bzl.CallExpr{
@@ -137,7 +139,7 @@ func (g *Generator) generateOne(rel string, pkg *build.Package) (*bzl.File, erro
 		return nil, err
 	}
 
-	file := &bzl.File{Path: filepath.Join(rel, "BUILD")}
+	file := &bzl.File{Path: filepath.Join(rel, g.buildName)}
 	for _, r := range rs {
 		file.Stmt = append(file.Stmt, r.Call)
 	}
