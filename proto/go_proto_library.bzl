@@ -114,7 +114,7 @@ def _check_bazel_style(ctx):
 def _go_proto_library_gen_impl(ctx):
   """Rule implementation that generates Go using protoc."""
   proto_outs, go_package_name = _check_bazel_style(ctx)
-  m_imports = ["M%s=%s%s%s" % (f.short_path, _go_prefix(ctx),
+  m_imports = ["M%s=%s%s%s" % (_drop_external(f.short_path), _go_prefix(ctx),
                                ctx.label.package, go_package_name)
                for f in ctx.files.srcs]
   protos, mi = _collect_protos_import(ctx)
@@ -134,8 +134,8 @@ def _go_proto_library_gen_impl(ctx):
   cmds += ["cd %s" % work_dir,
            "%s/%s --go_out=%s%s:. %s" % (root_prefix, ctx.executable.protoc.path,
                                          use_grpc, m_import_path,
-                                         " ".join([f.short_path for f in srcs]))]
-  cmds += ["/bin/cp %s %s/%s" % (p.short_path, root_prefix, p.path)
+                                         " ".join([_drop_external(f.short_path) for f in srcs]))]
+  cmds += ["/bin/cp %s %s/%s" % (_drop_external(p.short_path), root_prefix, p.path)
            for p in proto_outs]
   run = ctx.new_file(ctx.configuration.bin_dir, ctx.outputs.outs[0].basename + ".run")
   ctx.file_action(
