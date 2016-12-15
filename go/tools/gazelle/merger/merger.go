@@ -26,7 +26,10 @@ import (
 	bzl "github.com/bazelbuild/buildifier/core"
 )
 
-const keep = "# keep" // marker in srcs or deps to tell gazelle to preserve.
+const (
+	gazelleIgnore = "# gazelle:ignore" // marker in a BUILD file to ignore it.
+	keep          = "# keep"           // marker in srcs or deps to tell gazelle to preserve.
+)
 
 var (
 	mergeableFields = map[string]bool{
@@ -50,6 +53,13 @@ func MergeWithExisting(newfile *bzl.File) (*bzl.File, error) {
 	f, err := bzl.Parse(newfile.Path, b)
 	if err != nil {
 		return nil, err
+	}
+	for _, s := range f.Stmt {
+		for _, c := range s.Comment().After {
+			if strings.HasPrefix(c.Token, gazelleIgnore) {
+				return f, nil
+			}
+		}
 	}
 
 	var newStmt []bzl.Expr
