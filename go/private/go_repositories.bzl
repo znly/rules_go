@@ -18,12 +18,12 @@ repository_tool_deps = {
     'buildifier': struct(
         importpath = 'github.com/bazelbuild/buildifier',
         repo = 'https://github.com/bazelbuild/buildifier',
-        commit = '0ca1d7991357ae7a7555589af88930d82cf07c0a',
+        commit = '0e32ea36fbdf03af102705d5e0f144231e673953',
     ),
     'tools': struct(
         importpath = 'golang.org/x/tools',
         repo = 'https://github.com/golang/tools',
-        commit = '2bbdb4568e161d12394da43e88b384c6be63928b',
+        commit = '3d92dd60033c312e3ae7cac319c792271cf67e37',
     )
 }
 
