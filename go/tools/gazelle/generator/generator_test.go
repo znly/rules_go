@@ -54,6 +54,22 @@ func TestGeneratorDotBazel(t *testing.T) {
 	testGenerator(t, "BUILD.bazel")
 }
 
+func TestLoadExprSorted(t *testing.T) {
+	out := loadExpr("go_library", "another_thing", "sorted_last")
+	expected := []string{"@io_bazel_rules_go//go:def.bzl", "another_thing", "go_library", "sorted_last"}
+	var actual []string
+	for _, item := range out.List {
+		it, ok := item.(*bzl.StringExpr)
+		if !ok {
+			t.Fatalf("loadExpr List: got %T, want *bzl.StringExpr", item)
+		}
+		actual = append(actual, it.Value)
+	}
+	if !reflect.DeepEqual(actual, expected) {
+		t.Errorf("loadExpr List strings: want %#v, got %#v", expected, actual)
+	}
+}
+
 func testGenerator(t *testing.T, buildFileName string) {
 	stub := stubRuleGen{
 		goFiles: make(map[string][]string),

@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"go/build"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	bzl "github.com/bazelbuild/buildifier/build"
@@ -179,7 +180,9 @@ func (g *Generator) generateLoad(f *bzl.File) bzl.Expr {
 	return loadExpr(list...)
 }
 
-func loadExpr(rules ...string) bzl.Expr {
+func loadExpr(rules ...string) *bzl.CallExpr {
+	sort.Strings(rules)
+
 	list := []bzl.Expr{
 		&bzl.StringExpr{Value: GoRulesBzl},
 	}
