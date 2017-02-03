@@ -12,8 +12,7 @@ os:
 
 env:
   - V=HEAD
-  - V=0.4.3
-  - V=0.4.2
+  - V=0.4.4
 
 before_install:
   - |

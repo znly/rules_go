@@ -41,7 +41,7 @@ They currently do not support (in order of importance):
 * coverage
 * test sharding
 
-Note: this repo requires bazel >= 0.4.2 to function (due to the use of BUILD.bazel files)
+Note: this repo requires bazel >= 0.4.4 to function (due to the use of BUILD.bazel files in bazelbuild/buildifier)
 
 ## Setup
 
