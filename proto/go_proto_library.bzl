@@ -179,14 +179,12 @@ _go_proto_library_gen = rule(
         "outs": attr.output_list(mandatory = True),
         "ignore_go_package_option": attr.int(default = 0),
         "protoc": attr.label(
-            default = Label("@com_github_google_protobuf//:protoc"),
             executable = True,
             single_file = True,
             allow_files = True,
             cfg = "host",
         ),
         "protoc_gen_go": attr.label(
-            default = Label("@com_github_golang_protobuf//protoc-gen-go"),
             allow_files = True,
             cfg = "host",
         ),
@@ -222,6 +220,8 @@ def go_proto_library(name, srcs = None, deps = None,
                      has_services = 0,
                      testonly = 0, visibility = None,
                      ignore_go_package_option = 0,
+                     protoc = "@com_github_google_protobuf//:protoc",
+                     protoc_gen_go = "@com_github_golang_protobuf//protoc-gen-go",
                      rules_go_repo_only_for_internal_use = "@io_bazel_rules_go",
                      **kwargs):
   """Macro which generates and compiles protobufs for Go.
@@ -239,6 +239,9 @@ def go_proto_library(name, srcs = None, deps = None,
     visibility: visibility to use on underlying go_library
     ignore_go_package_option: if 1, ignore the "option go_package" statement in
                               the srcs proto files.
+    protoc: override the default version of protoc.  Most users won't need this.
+    protoc_gen_go: override the default version of protoc_gen_go.
+                   Most users won't need this.
     rules_go_repo_only_for_internal_use: don't use this, only to allow
                                          internal tests to work.
     **kwargs: any other args which are passed through to the underlying go_library
@@ -267,6 +270,8 @@ def go_proto_library(name, srcs = None, deps = None,
       visibility = visibility,
       ignore_go_package_option = ignore_go_package_option,
       grpc = has_services,
+      protoc = protoc,
+      protoc_gen_go = protoc_gen_go,
   )
   grpc_deps = []
   if has_services:
