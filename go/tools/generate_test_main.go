@@ -24,6 +24,7 @@ import (
 	"go/token"
 	"log"
 	"os"
+	"runtime"
 	"strings"
 	"text/template"
 )
@@ -35,7 +36,66 @@ type Cases struct {
 	TestNames      []string
 	BenchmarkNames []string
 	HasTestMain    bool
+	Version        string
 }
+
+var codeTpl = `
+package main
+import (
+	"flag"
+	"os"
+{{if eq .Version "go1.7.5"}}
+	"regexp"
+{{end}}
+	"testing"
+{{if eq .Version "go1.8"}}
+	"testing/internal/testdeps"
+{{end}}
+
+{{if .TestNames}}
+	undertest "{{.Package}}"
+{{else if .BenchmarkNames}}
+	undertest "{{.Package}}"
+{{end}}
+)
+
+var tests = []testing.InternalTest{
+{{range .TestNames}}
+	{"{{.}}", undertest.{{.}} },
+{{end}}
+}
+
+var benchmarks = []testing.InternalBenchmark{
+{{range .BenchmarkNames}}
+	{"{{.}}", undertest.{{.}} },
+{{end}}
+}
+
+func main() {
+	os.Chdir("{{.RunDir}}")
+	if filter := os.Getenv("TESTBRIDGE_TEST_ONLY"); filter != "" {
+		if f := flag.Lookup("test.run"); f != nil {
+			f.Value.Set(filter)
+		}
+	}
+
+{{if eq .Version "go1.8"}}
+	m := testing.MainStart(testdeps.TestDeps{}, tests, benchmarks, nil)
+	{{if not .HasTestMain}}
+	os.Exit(m.Run())
+	{{else}}
+	undertest.TestMain(m)
+	{{end}}
+{{else}}
+	{{if not .HasTestMain}}
+	testing.Main(regexp.MatchString, tests, benchmarks, nil)
+	{{else}}
+	m := testing.MainStart(regexp.MatchString, tests, benchmarks, nil)
+	undertest.TestMain(m)
+	{{end}}
+{{end}}
+}
+`
 
 func main() {
 	pkg := flag.String("package", "", "package from which to import test methods.")
@@ -125,49 +185,8 @@ func main() {
 		}
 	}
 
-	tpl := template.Must(template.New("source").Parse(`
-package main
-import (
-	"flag"
-	"os"
-	"testing"
-	"testing/internal/testdeps"
-
-{{ if .TestNames }}
-	undertest "{{.Package}}"
-{{else if .BenchmarkNames }}
-	undertest "{{.Package}}"
-{{ end }}
-)
-
-var tests = []testing.InternalTest{
-{{range .TestNames}}
-	{"{{.}}", undertest.{{.}} },
-{{end}}
-}
-
-var benchmarks = []testing.InternalBenchmark{
-{{range .BenchmarkNames}}
-	{"{{.}}", undertest.{{.}} },
-{{end}}
-}
-
-func main() {
-	os.Chdir("{{.RunDir}}")
-	if filter := os.Getenv("TESTBRIDGE_TEST_ONLY"); filter != "" {
-		if f := flag.Lookup("test.run"); f != nil {
-			f.Value.Set(filter)
-		}
-	}
-
-	m := testing.MainStart(testdeps.TestDeps{}, tests, benchmarks, nil)
-{{if not .HasTestMain}}
-	os.Exit(m.Run())
-{{else}}
-	undertest.TestMain(m)
-{{end}}
-}
-`))
+	cases.Version = runtime.Version()
+	tpl := template.Must(template.New("source").Parse(codeTpl))
 	if err := tpl.Execute(outFile, &cases); err != nil {
 		log.Fatalf("template.Execute(%v): %v", cases, err)
 	}
