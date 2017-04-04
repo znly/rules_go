@@ -121,7 +121,7 @@ func run(dirs []string, emit func(*bzl.File) error, external rules.ExternalResol
 func usage() {
 	fmt.Fprintln(os.Stderr, `usage: gazelle [flags...] [package-dirs...]
 
-Gazel is a BUILD file generator for Go projects.
+Gazelle is a BUILD file generator for Go projects.
 
 Currently its primary usage is to generate BUILD files for external dependencies
 in a go_repository rule.

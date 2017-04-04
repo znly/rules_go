@@ -13,5 +13,5 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package lib is an example go library package to be used as a test data of Gazel.
+// Package lib is an example go library package to be used as a test data of Gazelle.
 package lib
