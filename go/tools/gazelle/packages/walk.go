@@ -16,6 +16,7 @@ limitations under the License.
 package packages
 
 import (
+	"fmt"
 	"go/build"
 	"go/parser"
 	"go/token"
@@ -56,7 +57,14 @@ func Walk(bctx build.Context, repoRoot, goPrefix, dir string, f WalkFunc) error 
 			return filepath.SkipDir
 		}
 
-		pkg, err := findPackage(bctx, defaultPackageName(path, repoRoot, goPrefix), path)
+		pr := packageReader{
+			bctx:     bctx,
+			repoRoot: repoRoot,
+			goPrefix: goPrefix,
+			dir:      path,
+		}
+
+		pkg, err := pr.findPackage()
 		if err != nil {
 			if _, ok := err.(*build.NoGoError); ok {
 				return nil
@@ -67,13 +75,19 @@ func Walk(bctx build.Context, repoRoot, goPrefix, dir string, f WalkFunc) error 
 	})
 }
 
-func findPackage(bctx build.Context, defaultName, dir string) (*build.Package, error) {
-	packageGoFiles, otherFiles, err := findPackageFiles(dir)
+// packageReader reads package metadata from a directory.
+type packageReader struct {
+	bctx                    build.Context
+	repoRoot, goPrefix, dir string
+}
+
+func (pr *packageReader) findPackage() (*build.Package, error) {
+	packageGoFiles, otherFiles, err := pr.findPackageFiles()
 	if err != nil {
 		return nil, err
 	}
 
-	packageName, err := selectPackageName(packageGoFiles, defaultName, dir)
+	packageName, err := pr.selectPackageName(packageGoFiles)
 	if err != nil {
 		return nil, err
 	}
@@ -84,14 +98,14 @@ func findPackage(bctx build.Context, defaultName, dir string) (*build.Package, e
 	sort.Slice(files, func(i, j int) bool {
 		return files[i].Name() < files[j].Name()
 	})
-	bctx.ReadDir = func(dir string) ([]os.FileInfo, error) {
+	pr.bctx.ReadDir = func(dir string) ([]os.FileInfo, error) {
 		return files, nil
 	}
-	return bctx.ImportDir(dir, build.ImportComment)
+	return pr.bctx.ImportDir(pr.dir, build.ImportComment)
 }
 
-func findPackageFiles(dir string) (packageGoFiles map[string][]os.FileInfo, otherFiles []os.FileInfo, err error) {
-	files, err := ioutil.ReadDir(dir)
+func (pr *packageReader) findPackageFiles() (packageGoFiles map[string][]os.FileInfo, otherFiles []os.FileInfo, err error) {
+	files, err := ioutil.ReadDir(pr.dir)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -103,7 +117,7 @@ func findPackageFiles(dir string) (packageGoFiles map[string][]os.FileInfo, othe
 		}
 
 		name := file.Name()
-		filename := filepath.Join(dir, name)
+		filename := filepath.Join(pr.dir, name)
 		ext := path.Ext(name)
 		isGo := ext == ".go"
 
@@ -114,7 +128,7 @@ func findPackageFiles(dir string) (packageGoFiles map[string][]os.FileInfo, othe
 		fset := token.NewFileSet()
 		ast, err := parser.ParseFile(fset, filename, nil, parser.PackageClauseOnly)
 		if err != nil {
-			log.Printf("%s: error parsing package clause: %v", filename, err)
+			pr.warn(fmt.Errorf("%s: error parsing package clause: %v", filename, err))
 			continue
 		}
 
@@ -131,11 +145,11 @@ func findPackageFiles(dir string) (packageGoFiles map[string][]os.FileInfo, othe
 	return packageGoFiles, otherFiles, nil
 }
 
-func defaultPackageName(dir, repoRoot, goPrefix string) string {
-	if dir != repoRoot {
-		return filepath.Base(dir)
+func (pr *packageReader) defaultPackageName() string {
+	if pr.dir != pr.repoRoot {
+		return filepath.Base(pr.dir)
 	}
-	name := path.Base(goPrefix)
+	name := path.Base(pr.goPrefix)
 	if name == "." || name == "/" {
 		// This can happen if go_prefix is empty or is all slashes.
 		return "unnamed"
@@ -143,9 +157,9 @@ func defaultPackageName(dir, repoRoot, goPrefix string) string {
 	return name
 }
 
-func selectPackageName(packageGoFiles map[string][]os.FileInfo, defaultName, dir string) (string, error) {
+func (pr *packageReader) selectPackageName(packageGoFiles map[string][]os.FileInfo) (string, error) {
 	if len(packageGoFiles) == 0 {
-		return "", &build.NoGoError{Dir: dir}
+		return "", &build.NoGoError{Dir: pr.dir}
 	}
 
 	if len(packageGoFiles) == 1 {
@@ -156,11 +170,12 @@ func selectPackageName(packageGoFiles map[string][]os.FileInfo, defaultName, dir
 		return packageName, nil
 	}
 
+	defaultName := pr.defaultPackageName()
 	if _, ok := packageGoFiles[defaultName]; ok {
 		return defaultName, nil
 	}
 
-	err := &build.MultiplePackageError{Dir: dir}
+	err := &build.MultiplePackageError{Dir: pr.dir}
 	for name, files := range packageGoFiles {
 		// Add the first file for each package for the error message.
 		// Error() method expects these lists to be the same length. File
@@ -170,4 +185,8 @@ func selectPackageName(packageGoFiles map[string][]os.FileInfo, defaultName, dir
 		err.Files = append(err.Files, files[0].Name())
 	}
 	return "", err
+}
+
+func (pr *packageReader) warn(err error) {
+	log.Println(err)
 }
