@@ -13,26 +13,30 @@
 # limitations under the License.
 
 def _go_repository_impl(ctx):
-  if ctx.attr.commit and ctx.attr.tag:
-    fail("cannot specify both of commit and tag", "commit")
-  if ctx.attr.commit:
-    rev = ctx.attr.commit
-  elif ctx.attr.tag:
-    rev = ctx.attr.tag
-  else:
-    fail("neither commit or tag is specified", "commit")
-
-  if ctx.attr.url:
+  if ctx.attr.urls:
     # explicit source url
     if ctx.attr.vcs:
-      fail("cannot specify both of vcs and url")
+      fail("cannot specify both of urls and vcs", "vcs")
+    if ctx.attr.commit:
+      fail("cannot specify both of urls and commit", "commit")
+    if ctx.attr.tag:
+      fail("cannot specify both of urls and tag", "tag")
     ctx.download_and_extract(
-        url = ctx.attr.url,
+        url = ctx.attr.urls,
         sha256 = ctx.attr.sha256,
         stripPrefix = ctx.attr.strip_prefix,
         type = ctx.attr.type,
     )
   else:
+    if ctx.attr.commit and ctx.attr.tag:
+      fail("cannot specify both of commit and tag", "commit")
+    if ctx.attr.commit:
+      rev = ctx.attr.commit
+    elif ctx.attr.tag:
+      rev = ctx.attr.tag
+    else:
+      fail("neither commit or tag is specified", "commit")
+    
     # Using fetch repo
     if ctx.attr.vcs and not ctx.attr.remote:
       fail("if vcs is specified, remote must also be")
@@ -86,7 +90,7 @@ go_repository = repository_rule(
         "remote": attr.string(),
 
         # Attributes for a repository that comes from a source blob not a vcs
-        "url": attr.string(),
+        "urls": attr.string_list(),
         "strip_prefix": attr.string(),
         "type": attr.string(),
         "sha256": attr.string(),
