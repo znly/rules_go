@@ -180,6 +180,9 @@ def _emit_go_compile_action(ctx, sources, deps, libpaths, out_object, gc_goopts)
     out_object: the object file that should be produced
     gc_goopts: additional flags to pass to the compiler.
   """
+  if ctx.coverage_instrumented():
+    sources = _emit_go_cover_action(ctx, sources)
+
   # Compile filtered files.
   args = [
       "-cgo",
@@ -204,6 +207,8 @@ def _emit_go_compile_action(ctx, sources, deps, libpaths, out_object, gc_goopts)
       env = go_environment_vars(ctx),
   )
 
+  return sources
+
 def _emit_go_pack_action(ctx, out_lib, objects):
   """Construct the command line for packing objects together.
 
@@ -220,6 +225,40 @@ def _emit_go_pack_action(ctx, out_lib, objects):
       arguments = ["tool", "pack", "c", out_lib.path] + [a.path for a in objects],
       env = go_environment_vars(ctx),
   )
+
+def _emit_go_cover_action(ctx, sources):
+  """Construct the command line for test coverage instrument.
+
+  Args:
+    ctx: The skylark Context.
+    sources: an iterable of Go source files.
+
+  Returns:
+    A list of Go source code files which might be coverage instrumented.
+  """
+  outputs = []
+  # TODO(linuxerwang): make the mode configurable.
+  count = 0
+
+  for src in sources:
+    if not src.path.endswith(".go") or src.path.endswith("_test.go"):
+      outputs += [src]
+      continue
+
+    cover_var = "GoCover_%d" % count
+    out = ctx.new_file(src, src.basename[:-3] + '_' + cover_var + '.cover.go')
+    outputs += [out]
+    ctx.action(
+        inputs = [src] + ctx.files.toolchain,
+        outputs = [out],
+        mnemonic = "GoCover",
+        executable = ctx.file.go_tool,
+        arguments = ["tool", "cover", "--mode=set", "-var=%s" % cover_var, "-o", out.path, src.path],
+        env = go_environment_vars(ctx),
+    )
+    count += 1
+
+  return outputs
 
 def go_library_impl(ctx):
   """Implements the go_library() rule."""
@@ -273,11 +312,11 @@ def go_library_impl(ctx):
     transitive_cgo_deps += dep.transitive_cgo_deps
     transitive_go_library_paths += dep.transitive_go_library_paths
 
-  _emit_go_compile_action(ctx,
+  go_srcs = _emit_go_compile_action(ctx,
       sources = go_srcs,
       deps = deps,
-      libpaths = transitive_go_library_paths, 
-      out_object = out_object, 
+      libpaths = transitive_go_library_paths,
+      out_object = out_object,
       gc_goopts = gc_goopts,
   )
   _emit_go_pack_action(ctx, out_lib, [out_object] + extra_objects)
@@ -385,7 +424,7 @@ def _emit_go_link_action(ctx, transitive_go_library_paths, transitive_go_librari
 
   link_cmd = [
       ctx.file.go_tool.path,
-      "tool", "link", 
+      "tool", "link",
       "-L", "."
   ]
   for path in transitive_go_library_paths:
@@ -723,7 +762,7 @@ _cgo_filter_srcs = rule(
         ),
     },
     fragments = ["cpp"],
-)    
+)
 
 def _cgo_codegen_impl(ctx):
   go_srcs = ctx.files.srcs
