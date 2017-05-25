@@ -99,15 +99,15 @@ def go_repository_select(
     go_linux = None,
     go_darwin = None):
   if not go_version and not go_linux and not go_darwin:
-    go_version = "1.8.2"
+    go_version = "1.8.3"
 
   if go_version:
     if go_linux:
       fail("go_repositories: go_version and go_linux can't both be set")
     if go_darwin:
       fail("go_repositories: go_version and go_darwin can't both be set")
-    go_linux = "@go_%s_linux_x86_64" % go_version
-    go_darwin = "@go_%s_darwin_x86_64" % go_version
+    go_linux = "@go%s.linux-amd64" % go_version
+    go_darwin = "@go%s.darwin-amd64" % go_version
 
   go_linux_version = go_linux + "//:VERSION" if go_linux else None
   go_darwin_version = go_darwin + "//:VERSION" if go_darwin else None
