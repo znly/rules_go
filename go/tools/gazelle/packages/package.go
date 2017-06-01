@@ -15,7 +15,29 @@ limitations under the License.
 
 package packages
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
+
+// PlatformConstraints is a map from config_setting labels (for example,
+// "@io_bazel_rules_go//go/platform:linux_amd64") to a sets of build tags
+// that are true on each platform (for example, "linux,amd64").
+type PlatformConstraints map[string]map[string]bool
+
+// DefaultPlatformConstraints is the default set of platforms that Gazelle
+// will generate files for. These are the platforms that both Go and Bazel
+// support.
+var DefaultPlatformConstraints PlatformConstraints
+
+func init() {
+	DefaultPlatformConstraints = make(PlatformConstraints)
+	arch := "amd64"
+	for _, os := range []string{"darwin", "linux", "windows"} {
+		label := fmt.Sprintf("@io_bazel_rules_go//go/platform:%s_%s", os, arch)
+		DefaultPlatformConstraints[label] = map[string]bool{arch: true, os: true}
+	}
+}
 
 // Package contains metadata about a Go package extracted from a directory.
 // It fills a similar role to go/build.Package, but it separates files by

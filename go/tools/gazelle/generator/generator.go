@@ -40,6 +40,7 @@ type Generator struct {
 	goPrefix      string
 	buildFileName string
 	bctx          build.Context
+	platforms     packages.PlatformConstraints
 	g             rules.Generator
 }
 
@@ -77,6 +78,7 @@ func New(repoRoot, goPrefix, buildFileName, buildTags string, external rules.Ext
 		goPrefix:      goPrefix,
 		buildFileName: buildFileName,
 		bctx:          bctx,
+		platforms:     packages.DefaultPlatformConstraints,
 		g:             rules.NewGenerator(repoRoot, goPrefix, external),
 	}, nil
 }
