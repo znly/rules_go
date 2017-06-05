@@ -30,7 +30,8 @@ def _go_binary_impl(ctx):
     cgo_deps=lib_result.transitive_cgo_deps,
     libs=lib_result.files,
     executable=ctx.outputs.executable,
-    gc_linkopts=gc_linkopts(ctx))
+    gc_linkopts=gc_linkopts(ctx),
+    x_defs=ctx.attr.x_defs)
 
   return struct(
       files = depset([ctx.outputs.executable]),
@@ -41,7 +42,10 @@ def _go_binary_impl(ctx):
 go_binary = rule(
     _go_binary_impl,
     attrs = {
-        "data": attr.label_list(allow_files = True, cfg = "data"),
+        "data": attr.label_list(
+            allow_files = True,
+            cfg = "data",
+        ),
         "srcs": attr.label_list(allow_files = go_filetype),
         "deps": attr.label_list(
             providers = [
@@ -66,7 +70,10 @@ go_binary = rule(
         "x_defs": attr.string_dict(),
         #TODO(toolchains): Remove _toolchain attribute when real toolchains arrive
         "_go_toolchain": attr.label(default = Label("@io_bazel_rules_go_toolchain//:go_toolchain")),
-        "_go_prefix": attr.label(default=Label("//:go_prefix", relative_to_caller_repository = True)),
+        "_go_prefix": attr.label(default = Label(
+            "//:go_prefix",
+            relative_to_caller_repository = True,
+        )),
     },
     executable = True,
     fragments = ["cpp"],
@@ -99,8 +106,6 @@ def c_linker_options(ctx, blacklist=[]):
 def gc_linkopts(ctx):
   gc_linkopts = [ctx.expand_make_variables("gc_linkopts", f, {})
                  for f in ctx.attr.gc_linkopts]
-  for k, v in ctx.attr.x_defs.items():
-    gc_linkopts += ["-X", "%s='%s'" % (k, v)]
   return gc_linkopts
 
 def _extract_extldflags(gc_linkopts, extldflags):
@@ -128,7 +133,7 @@ def _extract_extldflags(gc_linkopts, extldflags):
   return filtered_gc_linkopts, extldflags
 
 def emit_go_link_action(ctx, transitive_go_library_paths, transitive_go_libraries, cgo_deps, libs,
-                         executable, gc_linkopts):
+                         executable, gc_linkopts, x_defs):
   """Sets up a symlink tree to libraries to link together."""
   go_toolchain = get_go_toolchain(ctx)
   config_strip = len(ctx.configuration.bin_dir.path) + 1
@@ -142,6 +147,7 @@ def emit_go_link_action(ctx, transitive_go_library_paths, transitive_go_librarie
     if d.basename.endswith('.so'):
       short_dir = d.dirname[len(d.root.path):]
       extldflags += ["-Wl,-rpath,$ORIGIN/" + ("../" * pkg_depth) + short_dir]
+
   gc_linkopts, extldflags = _extract_extldflags(gc_linkopts, extldflags)
 
   link_cmd = [
@@ -153,7 +159,19 @@ def emit_go_link_action(ctx, transitive_go_library_paths, transitive_go_librarie
     link_cmd += ["-L", path]
   link_cmd += [
       "-o", executable.path,
-  ] + gc_linkopts + ['"${STAMP_XDEFS[@]}"']
+  ] + gc_linkopts
+
+  # Process x_defs, either adding them directly to linker options, or
+  # saving them to process through stamping support.
+  stamp_x_defs = {}
+  for k, v in x_defs.items():
+    if v.startswith("{") and v.endswith("}"):
+      stamp_x_defs[k] = v[1:-1]
+    else:
+      link_cmd += ["-X", "%s='%s'" % (k, v)]
+  need_stamp = stamp_x_defs or ctx.attr.linkstamp
+  if need_stamp:
+    link_cmd.append('"${STAMP_XDEFS[@]}"')
 
   link_cmd += go_toolchain.link_flags + [
       "-extld", ld,
@@ -165,20 +183,30 @@ def emit_go_link_action(ctx, transitive_go_library_paths, transitive_go_librarie
   # or earlier.
   cmds = ["export PATH=$PATH:/usr/bin"]
 
-  cmds += [
-      "STAMP_XDEFS=()",
-  ]
-
+  # Stamping support
   stamp_inputs = []
-  if ctx.attr.linkstamp:
-    # read workspace status files, converting "KEY value" lines
-    # to "-X $linkstamp.KEY=value" arguments to the go linker.
+  if need_stamp:
     stamp_inputs = [ctx.info_file, ctx.version_file]
-    for f in stamp_inputs:
+    cmds.append("STAMP_XDEFS=()")
+    # x_def option support: grep the workspace status files for a key matching
+    # the requested stamp value.
+    # For example, for x_defs = {"some/pkg.var": "{FOO}"}, look in the workspace
+    # status files for a key "FOO", and pass its value to "some/pkg.var".
+    stamp_inputs_paths = [f.path for f in stamp_inputs]
+    for k,v in stamp_x_defs.items():
+      cmds.append(
+          "STAMP_XDEFS+=(-X \"%s=$(grep '^%s ' %s | cut -d' ' -f2-)\")" % (
+              k, v, ' '.join(stamp_inputs_paths))
+          )
+
+    # linkstamp option support: read workspace status files,
+    # converting "KEY value" lines to "-X $linkstamp.KEY=value" arguments
+    # to the go linker.
+    for path in stamp_inputs_paths:
       cmds += [
           "while read -r key value || [[ -n $key ]]; do",
           "  STAMP_XDEFS+=(-X \"%s.$key=$value\")" % ctx.attr.linkstamp,
-          "done < " + f.path,
+          "done < " + path,
       ]
 
   cmds += [' '.join(link_cmd)]
@@ -193,4 +221,3 @@ def emit_go_link_action(ctx, transitive_go_library_paths, transitive_go_librarie
       mnemonic = "GoLink",
       env = go_toolchain.env,
   )
-
