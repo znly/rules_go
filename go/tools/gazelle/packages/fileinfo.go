@@ -117,25 +117,6 @@ const (
 func fileNameInfo(dir, name string) fileInfo {
 	ext := path.Ext(name)
 
-	// Determine test, goos, and goarch. This is intended to match the logic
-	// in goodOSArchFile in go/build.
-	var isTest bool
-	var goos, goarch string
-	l := strings.Split(name[:len(name)-len(ext)], "_")
-	if len(l) >= 2 && l[len(l)-1] == "test" {
-		isTest = true
-		l = l[:len(l)-1]
-	}
-	switch {
-	case len(l) >= 3 && knownOS[l[len(l)-2]] && knownArch[l[len(l)-1]]:
-		goos = l[len(l)-2]
-		goarch = l[len(l)-1]
-	case len(l) >= 2 && knownOS[l[len(l)-1]]:
-		goos = l[len(l)-1]
-	case len(l) >= 2 && knownArch[l[len(l)-1]]:
-		goarch = l[len(l)-1]
-	}
-
 	// Categorize the file based on extension. Based on go/build.Context.Import.
 	var category extCategory
 	switch ext {
@@ -155,6 +136,25 @@ func fileNameInfo(dir, name string) fileInfo {
 		category = unsupportedExt
 	default:
 		category = ignoredExt
+	}
+
+	// Determine test, goos, and goarch. This is intended to match the logic
+	// in goodOSArchFile in go/build.
+	var isTest bool
+	var goos, goarch string
+	l := strings.Split(name[:len(name)-len(ext)], "_")
+	if len(l) >= 2 && l[len(l)-1] == "test" {
+		isTest = category == goExt
+		l = l[:len(l)-1]
+	}
+	switch {
+	case len(l) >= 3 && knownOS[l[len(l)-2]] && knownArch[l[len(l)-1]]:
+		goos = l[len(l)-2]
+		goarch = l[len(l)-1]
+	case len(l) >= 2 && knownOS[l[len(l)-1]]:
+		goos = l[len(l)-1]
+	case len(l) >= 2 && knownArch[l[len(l)-1]]:
+		goarch = l[len(l)-1]
 	}
 
 	return fileInfo{

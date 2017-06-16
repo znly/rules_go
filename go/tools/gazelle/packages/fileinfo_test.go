@@ -417,7 +417,17 @@ func TestFileNameInfo(t *testing.T) {
 			fileInfo{
 				ext:      ".cxx",
 				category: cExt,
-				isTest:   true,
+				isTest:   false,
+			},
+		},
+		{
+			"c os test file",
+			"foo_linux_test.c",
+			fileInfo{
+				ext:      ".c",
+				category: cExt,
+				isTest:   false,
+				goos:     "linux",
 			},
 		},
 		{
@@ -452,6 +462,24 @@ func TestFileNameInfo(t *testing.T) {
 			fileInfo{
 				ext:      ".m",
 				category: unsupportedExt,
+			},
+		},
+		{
+			"ignored test file",
+			"foo_test.py",
+			fileInfo{
+				ext:     ".py",
+				isTest:  false,
+				isXTest: false,
+			},
+		},
+		{
+			"ignored xtest file",
+			"foo_xtest.py",
+			fileInfo{
+				ext:     ".py",
+				isTest:  false,
+				isXTest: false,
 			},
 		},
 		{

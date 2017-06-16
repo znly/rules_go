@@ -172,6 +172,8 @@ func (ts *PlatformStrings) firstGoFile() string {
 // be added to any target (for example, .txt files).
 func (p *Package) addFile(info fileInfo, cgo bool, buildTags map[string]bool, platforms PlatformConstraints) error {
 	switch {
+	case info.category == ignoredExt || info.category == unsupportedExt:
+		return nil
 	case info.isXTest:
 		if info.isCgo {
 			return fmt.Errorf("%s: use of cgo in test not supported", info.path)
