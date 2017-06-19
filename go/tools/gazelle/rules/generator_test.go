@@ -46,6 +46,16 @@ func testConfig(repoRoot, goPrefix string) *config.Config {
 	return c
 }
 
+func packageFromDir(c *config.Config, dir string) *packages.Package {
+	var pkg *packages.Package
+	packages.Walk(c, dir, func(p *packages.Package) {
+		if p.Dir == dir {
+			pkg = p
+		}
+	})
+	return pkg
+}
+
 func TestGenerator(t *testing.T) {
 	repoRoot := filepath.Join(testdata.Dir(), "repo")
 	goPrefix := "example.com/repo"
@@ -61,9 +71,11 @@ func TestGenerator(t *testing.T) {
 		"lib/internal/deep",
 		"main_test_only",
 		"platforms",
+		"tests_import_testdata",
+		"tests_with_testdata",
 	} {
 		dir := filepath.Join(repoRoot, filepath.FromSlash(rel))
-		pkg := packages.FindPackage(c, dir)
+		pkg := packageFromDir(c, dir)
 		rules := g.Generate(rel, pkg)
 		got := format(rules)
 
@@ -87,7 +99,7 @@ func TestGeneratorGoPrefix(t *testing.T) {
 	c := testConfig(repoRoot, goPrefix)
 	g := rules.NewGenerator(c)
 	dir := filepath.Join(repoRoot, "lib")
-	pkg := packages.FindPackage(c, dir)
+	pkg := packageFromDir(c, dir)
 	rules := g.Generate("", pkg)
 
 	if got, want := len(rules), 1; got < want {

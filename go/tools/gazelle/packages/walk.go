@@ -19,7 +19,6 @@ import (
 	"go/build"
 	"io/ioutil"
 	"log"
-	"os"
 	"path"
 	"path/filepath"
 	"strings"
@@ -45,28 +44,44 @@ type WalkFunc func(pkg *Package)
 // the directory name, or if some other error occurs, an error will be logged,
 // and "f" will not be called.
 func Walk(c *config.Config, dir string, f WalkFunc) {
-	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+	// visit walks the directory tree in post-order. It returns whether the
+	// the directory it was called on or any subdirectory contains a Bazel
+	// package. This affects whether "testdata" directories are considered
+	// data dependencies.
+	var visit func(string) bool
+	visit = func(path string) bool {
+		files, err := ioutil.ReadDir(path)
 		if err != nil {
-			return err
+			log.Print(err)
+			return false
 		}
-		if !info.IsDir() {
-			return nil
-		}
-		if base := info.Name(); base == "" || base[0] == '.' || base == "testdata" {
-			return filepath.SkipDir
+		subdirHasPackage := false
+		hasBuild := false
+		hasTestdata := false
+		for _, f := range files {
+			base := f.Name()
+			if f.IsDir() && base != "" && base[0] != '.' {
+				hasPackage := visit(filepath.Join(path, base))
+				if base == "testdata" {
+					hasTestdata = !hasPackage
+				}
+				subdirHasPackage = subdirHasPackage || hasPackage
+			} else if !f.IsDir() && c.IsValidBuildFileName(base) {
+				hasBuild = true
+			}
 		}
 
-		if pkg := FindPackage(c, path); pkg != nil {
+		if pkg := findPackage(c, path, hasTestdata); pkg != nil {
 			f(pkg)
+			return true
 		}
-		return nil
-	})
-	if err != nil {
-		log.Print(err)
+		return subdirHasPackage || hasBuild
 	}
+
+	visit(dir)
 }
 
-// FindPackage reads source files in a given directory and returns a Package
+// findPackage reads source files in a given directory and returns a Package
 // containing information about those files and how to build them.
 //
 // If no buildable .go files are found in the directory, nil will be returned.
@@ -74,7 +89,7 @@ func Walk(c *config.Config, dir string, f WalkFunc) {
 // name matches the directory base name will be returned. If there is no such
 // package or if an error occurs, an error will be logged, and nil will be
 // returned.
-func FindPackage(c *config.Config, dir string) *Package {
+func findPackage(c *config.Config, dir string, hasTestdata bool) *Package {
 	var goFiles, otherFiles []string
 
 	// List the files in the directory and split into .go files and other files.
@@ -86,10 +101,6 @@ func FindPackage(c *config.Config, dir string) *Package {
 		return nil
 	}
 	for _, file := range files {
-		if file.IsDir() {
-			continue
-		}
-
 		name := file.Name()
 		if name == "" || name[0] == '.' || name[0] == '_' {
 			continue
@@ -120,8 +131,9 @@ func FindPackage(c *config.Config, dir string) *Package {
 
 		if _, ok := packageMap[info.packageName]; !ok {
 			packageMap[info.packageName] = &Package{
-				Name: info.packageName,
-				Dir:  dir,
+				Name:        info.packageName,
+				Dir:         dir,
+				HasTestdata: hasTestdata,
 			}
 		}
 		err = packageMap[info.packageName].addFile(c, info, false)

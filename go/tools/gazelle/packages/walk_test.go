@@ -74,7 +74,11 @@ func createFiles(files []fileSpec) (string, error) {
 }
 
 func walkPackages(repoRoot, goPrefix, dir string) []*packages.Package {
-	c := &config.Config{RepoRoot: repoRoot, GoPrefix: goPrefix}
+	c := &config.Config{
+		RepoRoot:            repoRoot,
+		GoPrefix:            goPrefix,
+		ValidBuildFileNames: config.DefaultValidBuildFileNames,
+	}
 	var pkgs []*packages.Package
 	packages.Walk(c, dir, func(pkg *packages.Package) {
 		pkgs = append(pkgs, pkg)
@@ -229,4 +233,81 @@ func TestRootWithoutPrefix(t *testing.T) {
 	if len(got) > 0 {
 		t.Errorf("got %v; want empty slice", got)
 	}
+}
+
+func TestTestdata(t *testing.T) {
+	files := []fileSpec{
+		{path: "raw/testdata/"},
+		{path: "raw/a.go", content: "package raw"},
+		{path: "with_build/testdata/BUILD"},
+		{path: "with_build/a.go", content: "package with_build"},
+		{path: "with_build_bazel/testdata/BUILD.bazel"},
+		{path: "with_build_bazel/a.go", content: "package with_build_bazel"},
+		{path: "with_build_nested/testdata/x/BUILD"},
+		{path: "with_build_nested/a.go", content: "package with_build_nested"},
+		{path: "with_go/testdata/a.go", content: "package testdata"},
+		{path: "with_go/a.go", content: "package with_go"},
+	}
+	want := []*packages.Package{
+		{
+			Name: "raw",
+			Dir:  "raw",
+			Library: packages.Target{
+				Sources: packages.PlatformStrings{
+					Generic: []string{"a.go"},
+				},
+			},
+			HasTestdata: true,
+		},
+		{
+			Name: "with_build",
+			Dir:  "with_build",
+			Library: packages.Target{
+				Sources: packages.PlatformStrings{
+					Generic: []string{"a.go"},
+				},
+			},
+			HasTestdata: false,
+		},
+		{
+			Name: "with_build_bazel",
+			Dir:  "with_build_bazel",
+			Library: packages.Target{
+				Sources: packages.PlatformStrings{
+					Generic: []string{"a.go"},
+				},
+			},
+			HasTestdata: false,
+		},
+		{
+			Name: "with_build_nested",
+			Dir:  "with_build_nested",
+			Library: packages.Target{
+				Sources: packages.PlatformStrings{
+					Generic: []string{"a.go"},
+				},
+			},
+			HasTestdata: false,
+		},
+		{
+			Name: "testdata",
+			Dir:  "with_go/testdata",
+			Library: packages.Target{
+				Sources: packages.PlatformStrings{
+					Generic: []string{"a.go"},
+				},
+			},
+		},
+		{
+			Name: "with_go",
+			Dir:  "with_go",
+			Library: packages.Target{
+				Sources: packages.PlatformStrings{
+					Generic: []string{"a.go"},
+				},
+			},
+			HasTestdata: false,
+		},
+	}
+	checkFiles(t, files, "", want)
 }
