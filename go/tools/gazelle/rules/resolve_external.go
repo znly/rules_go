@@ -16,6 +16,7 @@ limitations under the License.
 package rules
 
 import (
+	"fmt"
 	"path"
 	"strings"
 
@@ -49,14 +50,18 @@ type externalResolver struct{}
 // recommended reverse-DNS form of workspace name as described in
 // http://bazel.io/docs/be/functions.html#workspace.
 func (e externalResolver) resolve(importpath, dir string) (label, error) {
-	prefix := findCachedRepoRoot(importpath)
+	prefix, err := findCachedRepoRoot(importpath)
+	if err != nil {
+		return label{}, err
+	}
 	if prefix == "" {
 		r, err := repoRootForImportPath(importpath, false)
 		if err != nil {
+			repoRootCache[prefix] = repoRootCacheEntry{prefix: importpath, err: err}
 			return label{}, err
 		}
 		prefix = r.Root
-		repoRootCache[prefix] = 0
+		repoRootCache[prefix] = repoRootCacheEntry{prefix: prefix}
 	}
 
 	var pkg string
@@ -71,7 +76,7 @@ func (e externalResolver) resolve(importpath, dir string) (label, error) {
 	}, nil
 }
 
-func findCachedRepoRoot(importpath string) string {
+func findCachedRepoRoot(importpath string) (string, error) {
 	// subpaths contains slices of importpath with components removed. For
 	// example:
 	//   golang.org/x/tools/go/vcs
@@ -80,43 +85,59 @@ func findCachedRepoRoot(importpath string) string {
 	subpaths := []string{importpath}
 
 	for {
-		if n, ok := repoRootCache[importpath]; ok {
-			if n >= len(subpaths) {
-				// The import path is shorter than expected. Treat as a miss.
-				return ""
+		if e, ok := repoRootCache[importpath]; ok {
+			if e.missing >= len(subpaths) {
+				return "", fmt.Errorf("import path %q is shorter than the known prefix %q", importpath, e.prefix)
 			}
 			// Cache hit. Restore n components of the import path to get the
 			// repository root.
-			return subpaths[len(subpaths)-n-1]
+			return subpaths[len(subpaths)-e.missing-1], e.err
 		}
 
 		// Prefix not found. Remove the last component and try again.
 		importpath = path.Dir(importpath)
 		if importpath == "." || importpath == "/" {
 			// Cache miss.
-			return ""
+			return "", nil
 		}
 		subpaths = append(subpaths, importpath)
 	}
 }
 
-// repoCache is a map of known repo prefixes to the number of additional
-// path components needed to form the repo root. For example, for the key
-// "golang.org/x", the value is 1, since one additional component is needed
-// to form a full repository path (for example, "golang.org/x/net").
-//
-// This is initially populated by a set of well-known servers, but
+type repoRootCacheEntry struct {
+	// prefix is part of an import path that corresponds to a repository root,
+	// possibly with some components missing.
+	prefix string
+
+	// missing is the number of components missing from prefix to make a full
+	// repository root prefix. For most repositories, this is 0, meaning the
+	// prefix is the full path to the repository root. For some well-known sites,
+	// this is non-zero. For example, we can store the prefix "github.com" with
+	// missing as 2, since GitHub always has two path components before the
+	// actual repository.
+	missing int
+
+	// err is an error we encountered when resolving this prefix. This is used
+	// for caching negative results.
+	err error
+}
+
+// repoRootCache stores the results (both positive and negative) of
+// repoRootForImportPath. It is initially populated with some well-known sites.
 // externalResolver.resolve will add entries as it looks up new packages.
-var repoRootCache map[string]int
+var repoRootCache map[string]repoRootCacheEntry
 
 // resetRepoRootCache creates repoRootCache and adds special cases. It is
 // called during initialization and in tests.
 func resetRepoRootCache() {
-	repoRootCache = map[string]int{
-		"golang.org/x":      1,
-		"google.golang.org": 1,
-		"cloud.google.com":  1,
-		"github.com":        2,
+	repoRootCache = make(map[string]repoRootCacheEntry)
+	for _, e := range []repoRootCacheEntry{
+		{prefix: "golang.org/x", missing: 1},
+		{prefix: "google.golang.org", missing: 1},
+		{prefix: "cloud.google.com", missing: 1},
+		{prefix: "github.com", missing: 2},
+	} {
+		repoRootCache[e.prefix] = e
 	}
 }
 

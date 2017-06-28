@@ -16,6 +16,8 @@ limitations under the License.
 package rules
 
 import (
+	"fmt"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -24,29 +26,43 @@ import (
 )
 
 type special struct {
-	in, want string
+	in, want  string
+	wantError bool
+}
+
+func TestMain(m *testing.M) {
+	repoRootForImportPath = stubRepoRootForImportPath
+	os.Exit(m.Run())
 }
 
 func TestSpecialCases(t *testing.T) {
 	resetRepoRootCache()
-	for _, c := range []special{
-		{"golang.org/x/net/context", "golang.org/x/net"},
-		{"golang.org/x/tools/go/vcs", "golang.org/x/tools"},
-		{"golang.org/x/goimports", "golang.org/x/goimports"},
-		{"cloud.google.com/fashion/industry", "cloud.google.com/fashion"},
-		{"github.com/foo", ""},
-		{"github.com/foo/bar", "github.com/foo/bar"},
-		{"github.com/foo/bar/baz", "github.com/foo/bar"},
-		{"unsupported.org/x/net/context", ""},
+	for _, c := range []struct {
+		in, want  string
+		wantError bool
+	}{
+		{in: "golang.org/x/net/context", want: "golang.org/x/net"},
+		{in: "golang.org/x/tools/go/vcs", want: "golang.org/x/tools"},
+		{in: "golang.org/x/goimports", want: "golang.org/x/goimports"},
+		{in: "cloud.google.com/fashion/industry", want: "cloud.google.com/fashion"},
+		{in: "github.com/foo", wantError: true},
+		{in: "github.com/foo/bar", want: "github.com/foo/bar"},
+		{in: "github.com/foo/bar/baz", want: "github.com/foo/bar"},
+		{in: "unsupported.org/x/net/context", want: ""},
 	} {
-		if got := findCachedRepoRoot(c.in); got != c.want {
+		if got, err := findCachedRepoRoot(c.in); err != nil {
+			if !c.wantError {
+				t.Errorf("unexpected error: %v", err)
+			}
+		} else if c.wantError {
+			t.Errorf("unexpected success: %v", c.in)
+		} else if got != c.want {
 			t.Errorf("specialCases(%q) = %q; want %q", c.in, got, c.want)
 		}
 	}
 }
 
 func TestExternalResolver(t *testing.T) {
-	repoRootForImportPath = stubRepoRootForImportPath
 	resetRepoRootCache()
 
 	var r externalResolver
@@ -115,9 +131,13 @@ func stubRepoRootForImportPath(importpath string, verbose bool) (*vcs.RepoRoot, 
 		}, nil
 	}
 
-	return &vcs.RepoRoot{
-		VCS:  vcs.ByCmd("git"),
-		Repo: "https://example.com",
-		Root: "example.com",
-	}, nil
+	if strings.HasPrefix(importpath, "example.com") {
+		return &vcs.RepoRoot{
+			VCS:  vcs.ByCmd("git"),
+			Repo: "https://example.com",
+			Root: "example.com",
+		}, nil
+	}
+
+	return nil, fmt.Errorf("could not resolve import path: %q", importpath)
 }
