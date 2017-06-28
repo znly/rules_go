@@ -26,7 +26,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	bzl "github.com/bazelbuild/buildtools/build"
+	bf "github.com/bazelbuild/buildtools/build"
 	"github.com/bazelbuild/rules_go/go/tools/gazelle/rules"
 	"github.com/bazelbuild/rules_go/go/tools/gazelle/wspace"
 	"golang.org/x/tools/go/vcs"
@@ -63,7 +63,7 @@ func run(args []string) error {
 	if err != nil {
 		return err
 	}
-	f, err := bzl.Parse(p, b)
+	f, err := bf.Parse(p, b)
 	if err != nil {
 		return err
 	}
@@ -76,8 +76,8 @@ func run(args []string) error {
 		f.Stmt = append(f.Stmt, imp)
 	}
 	updateLoad(f)
-	bzl.Rewrite(f, nil)
-	return ioutil.WriteFile(f.Path, bzl.Format(f), 0644)
+	bf.Rewrite(f, nil)
+	return ioutil.WriteFile(f.Path, bf.Format(f), 0644)
 }
 
 func nameAndImportpath(name string) (string, string, error) {
@@ -97,7 +97,7 @@ func nameAndImportpath(name string) (string, string, error) {
 	return name, strings.Join([]string{s[1] + "." + s[0], s[2], rest}, "/"), nil
 }
 
-func findImport(nameIn string) (bzl.Expr, error) {
+func findImport(nameIn string) (bf.Expr, error) {
 	name, importpath, err := nameAndImportpath(nameIn)
 	if err != nil {
 		return nil, err
@@ -117,9 +117,9 @@ func findImport(nameIn string) (bzl.Expr, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &bzl.CallExpr{
-		X: &bzl.LiteralExpr{Token: "go_repository"},
-		List: []bzl.Expr{
+	return &bf.CallExpr{
+		X: &bf.LiteralExpr{Token: "go_repository"},
+		List: []bf.Expr{
 			attr("name", name),
 			attr("importpath", importpath),
 			attr("commit", commit),
@@ -127,11 +127,11 @@ func findImport(nameIn string) (bzl.Expr, error) {
 	}, nil
 }
 
-func attr(key, val string) *bzl.BinaryExpr {
-	return &bzl.BinaryExpr{
-		X:  &bzl.LiteralExpr{Token: key},
+func attr(key, val string) *bf.BinaryExpr {
+	return &bf.BinaryExpr{
+		X:  &bf.LiteralExpr{Token: key},
 		Op: "=",
-		Y:  &bzl.StringExpr{Value: val},
+		Y:  &bf.StringExpr{Value: val},
 	}
 }
 
@@ -158,27 +158,27 @@ func lsRemote(repo string) (string, error) {
 	return strings.Split(b.Text(), "\t")[0], nil
 }
 
-func updateLoad(f *bzl.File) {
+func updateLoad(f *bf.File) {
 	for _, s := range f.Stmt {
-		call, ok := s.(*bzl.CallExpr)
+		call, ok := s.(*bf.CallExpr)
 		if !ok || len(call.List) == 0 {
 			continue
 		}
-		if x, ok := call.X.(*bzl.LiteralExpr); !ok || x.Token != "load" {
+		if x, ok := call.X.(*bf.LiteralExpr); !ok || x.Token != "load" {
 			continue
 		}
-		if label, ok := call.List[0].(*bzl.StringExpr); !ok || label.Value != "@io_bazel_rules_go//go:def.bzl" {
+		if label, ok := call.List[0].(*bf.StringExpr); !ok || label.Value != "@io_bazel_rules_go//go:def.bzl" {
 			continue
 		}
 		haveGoRepository := false
 		for _, arg := range call.List[1:] {
-			if sym, ok := arg.(*bzl.StringExpr); ok && sym.Value == "go_repository" {
+			if sym, ok := arg.(*bf.StringExpr); ok && sym.Value == "go_repository" {
 				haveGoRepository = true
 				break
 			}
 		}
 		if !haveGoRepository {
-			call.List = append(call.List, &bzl.StringExpr{Value: "go_repository"})
+			call.List = append(call.List, &bf.StringExpr{Value: "go_repository"})
 		}
 	}
 }
