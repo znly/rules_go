@@ -102,6 +102,11 @@ func processPackage(c *config.Config, g rules.Generator, emit emitFunc, pkg *pac
 
 	// Existing file, so merge and replace the old one.
 	mergedFile := merger.MergeWithExisting(genFile, oldFile)
+	if mergedFile == nil {
+		// Ignored file. Don't emit.
+		return
+	}
+
 	bf.Rewrite(mergedFile, nil) // have buildifier 'format' our rules.
 	if err := emit(c, mergedFile); err != nil {
 		log.Print(err)
