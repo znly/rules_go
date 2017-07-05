@@ -40,6 +40,13 @@ def _go_repository_impl(ctx):
     # Using fetch repo
     if ctx.attr.vcs and not ctx.attr.remote:
       fail("if vcs is specified, remote must also be")
+
+    fetch_repo_env = {
+        "PATH": ctx.os.environ["PATH"],  # to find git
+    }
+    if "SSH_AUTH_SOCK" in ctx.os.environ:
+      fetch_repo_env["SSH_AUTH_SOCK"] = ctx.os.environ["SSH_AUTH_SOCK"]
+
     # TODO(yugui): support submodule?
     # c.f. https://www.bazel.io/versions/master/docs/be/workspace.html#git_repository.init_submodules
     result = env_execute(
@@ -52,7 +59,7 @@ def _go_repository_impl(ctx):
             '--vcs', ctx.attr.vcs,
             '--importpath', ctx.attr.importpath,
         ],
-        environment = {"PATH": ctx.os.environ["PATH"]},  # to find git
+        environment = fetch_repo_env,
     )
     if result.return_code:
       fail("failed to fetch %s: %s" % (ctx.name, result.stderr))
