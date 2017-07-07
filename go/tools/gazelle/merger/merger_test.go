@@ -424,6 +424,32 @@ go_library(
 )
 `,
 	}, {
+		desc: "preserve comments",
+		previous: `
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "a.go",  # preserve
+        "b.go",  # comments
+    ],
+)
+`,
+		current: `
+go_library(
+    name = "go_default_library",
+    srcs = ["a.go", "b.go"],
+)
+`,
+		expected: `
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "a.go",  # preserve
+        "b.go",  # comments
+    ],
+)
+`,
+	}, {
 		desc: "merge copts and clinkopts",
 		previous: `
 load("@io_bazel_rules_go//go:def.bzl", "cgo_library")
