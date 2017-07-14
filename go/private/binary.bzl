@@ -23,6 +23,8 @@ def _go_binary_impl(ctx):
       cgo_object = None,
       library = ctx.attr.library,
   )
+
+  # Default (dynamic) linking
   emit_go_link_action(
     ctx,
     transitive_go_libraries=lib_result.transitive_go_libraries,
@@ -33,11 +35,32 @@ def _go_binary_impl(ctx):
     gc_linkopts=gc_linkopts(ctx),
     x_defs=ctx.attr.x_defs)
 
-  return struct(
-      files = depset([ctx.outputs.executable]),
-      runfiles = lib_result.runfiles,
-      cgo_object = lib_result.cgo_object,
-  )
+  # Static linking (in the 'static' output group)
+  static_linkopts = [
+      "-linkmode", "external",
+      "-extldflags", "-static",
+  ]
+  static_executable = ctx.new_file(ctx.attr.name + ".static")
+  emit_go_link_action(
+    ctx,
+    transitive_go_libraries=lib_result.transitive_go_libraries,
+    transitive_go_library_paths=lib_result.transitive_go_library_paths,
+    cgo_deps=lib_result.transitive_cgo_deps,
+    libs=lib_result.files,
+    executable=static_executable,
+    gc_linkopts=gc_linkopts(ctx) + static_linkopts,
+    x_defs=ctx.attr.x_defs)
+
+  return [
+      struct(
+          files = depset([ctx.outputs.executable]),
+          runfiles = lib_result.runfiles,
+          cgo_object = lib_result.cgo_object,
+      ),
+      OutputGroupInfo(
+          static = depset([static_executable]),
+      ),
+  ]
 
 go_binary = rule(
     _go_binary_impl,
