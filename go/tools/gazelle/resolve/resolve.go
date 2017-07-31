@@ -76,7 +76,7 @@ func NewLabelResolver(c *config.Config) LabelResolver {
 	var e LabelResolver
 	switch c.DepMode {
 	case config.ExternalMode:
-		e = newExternalResolver()
+		e = newExternalResolver(c.KnownImports)
 	case config.VendorMode:
 		e = vendoredResolver{}
 	}

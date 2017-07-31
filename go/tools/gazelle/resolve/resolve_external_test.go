@@ -25,10 +25,10 @@ import (
 )
 
 func TestSpecialCases(t *testing.T) {
-	r := newStubExternalResolver()
 	for _, c := range []struct {
-		in, want  string
-		wantError bool
+		in, want   string
+		extraKnown []string
+		wantError  bool
 	}{
 		{in: "golang.org/x/net/context", want: "golang.org/x/net"},
 		{in: "golang.org/x/tools/go/vcs", want: "golang.org/x/tools"},
@@ -38,7 +38,18 @@ func TestSpecialCases(t *testing.T) {
 		{in: "github.com/foo/bar", want: "github.com/foo/bar"},
 		{in: "github.com/foo/bar/baz", want: "github.com/foo/bar"},
 		{in: "unsupported.org/x/net/context", wantError: true},
+		{
+			in:         "private.com/my/repo/package/path",
+			extraKnown: []string{"other-host.com/repo", "private.com/my/repo"},
+			want:       "private.com/my/repo",
+		},
+		{
+			in:         "unsupported.org/x/net/context",
+			extraKnown: []string{"private.com/my/repo"},
+			wantError:  true,
+		},
 	} {
+		r := newStubExternalResolver(c.extraKnown)
 		if got, err := r.lookupPrefix(c.in); err != nil {
 			if !c.wantError {
 				t.Errorf("unexpected error: %v", err)
@@ -52,7 +63,7 @@ func TestSpecialCases(t *testing.T) {
 }
 
 func TestExternalResolver(t *testing.T) {
-	r := newStubExternalResolver()
+	r := newStubExternalResolver(nil)
 	for _, spec := range []struct {
 		importpath string
 		want       Label
@@ -100,8 +111,8 @@ func TestExternalResolver(t *testing.T) {
 	}
 }
 
-func newStubExternalResolver() *externalResolver {
-	r := newExternalResolver()
+func newStubExternalResolver(extraKnown []string) *externalResolver {
+	r := newExternalResolver(extraKnown)
 	r.repoRootForImportPath = stubRepoRootForImportPath
 	return r
 }

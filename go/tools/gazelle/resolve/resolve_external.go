@@ -41,7 +41,7 @@ type externalResolver struct {
 
 var _ LabelResolver = (*externalResolver)(nil)
 
-func newExternalResolver() *externalResolver {
+func newExternalResolver(extraKnownImports []string) *externalResolver {
 	cache := make(map[string]repoRootCacheEntry)
 	for _, e := range []repoRootCacheEntry{
 		{prefix: "golang.org/x", missing: 1},
@@ -50,6 +50,10 @@ func newExternalResolver() *externalResolver {
 		{prefix: "github.com", missing: 2},
 	} {
 		cache[e.prefix] = e
+	}
+
+	for _, e := range extraKnownImports {
+		cache[e] = repoRootCacheEntry{prefix: e, missing: 0}
 	}
 
 	return &externalResolver{

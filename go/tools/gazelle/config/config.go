@@ -47,6 +47,9 @@ type Config struct {
 
 	// DepMode determines how imports outside of GoPrefix are resolved.
 	DepMode DependencyMode
+
+	// KnownImports is a list of imports to add to the external resolver cache
+	KnownImports []string
 }
 
 var DefaultValidBuildFileNames = []string{"BUILD.bazel", "BUILD"}

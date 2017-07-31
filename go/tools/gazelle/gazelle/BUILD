@@ -5,6 +5,7 @@ go_library(
     srcs = [
         "diff.go",
         "fix.go",
+        "flags.go",
         "main.go",
         "print.go",
     ],
