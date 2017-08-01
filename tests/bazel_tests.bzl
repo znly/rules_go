@@ -157,6 +157,11 @@ execroot(
 _test_environment = repository_rule(
     implementation = _test_environment_impl,
     attrs = {},
+    environ = [
+      "BAZEL",
+      "BAZEL_VERSION",
+      "HOME",
+    ],
 )
 
 def test_environment():
