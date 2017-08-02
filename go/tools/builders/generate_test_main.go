@@ -26,6 +26,7 @@ import (
 	"go/token"
 	"log"
 	"os"
+	"path/filepath"
 	"regexp"
 	"runtime"
 	"strconv"
@@ -166,8 +167,12 @@ func coverRegisterFile(fileName string, counter []uint32, pos []uint32, numStmts
 {{end}}
 
 func main() {
-	if err := os.Chdir("{{.RunDir}}"); err != nil {
-		log.Fatalf("could not change to test directory: %v", err)
+	// Check if we're being run by Bazel and change directories if so.
+	// TEST_SRCDIR is set by the Bazel test runner, so that makes a decent proxy.
+	if _, ok := os.LookupEnv("TEST_SRCDIR"); ok {
+		if err := os.Chdir("{{.RunDir}}"); err != nil {
+			log.Fatalf("could not change to test directory: %v", err)
+		}
 	}
 
 	if filter := os.Getenv("TESTBRIDGE_TEST_ONLY"); filter != "" {
@@ -240,7 +245,7 @@ func run(args []string) error {
 	}
 	cases := Cases{
 		Package: *pkg,
-		RunDir:  *runDir,
+		RunDir:  filepath.FromSlash(*runDir),
 		Cover:   []coverInfo{ci},
 	}
 	testFileSet := token.NewFileSet()
