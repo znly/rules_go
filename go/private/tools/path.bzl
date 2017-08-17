@@ -63,7 +63,7 @@ and
         ctx.template_action(template=src, output=out, substitutions={})
       elif ctx.attr.mode == "link":
         ctx.action(
-            command='ln -s $(realpath "$1") "$2"',
+            command='ln -s $(readlink "$1") "$2"',
             arguments=[src.path, out.path],
             inputs=[src],
             outputs=[out],
@@ -79,7 +79,7 @@ and
   gopath, _, _ = envscript.short_path.rpartition("/")
   ctx.file_action(envscript, content="""
 export GOROOT="{goroot}"
-export GOPATH=$(realpath "{gopath}")
+export GOPATH="$(pwd)/{gopath}")
 """.format(
       goroot=go_toolchain.root.path,
       gopath = gopath,
@@ -99,7 +99,7 @@ go_path = rule(
     _go_path_impl,
     attrs = {
         "deps": attr.label_list(providers=[GoLibrary]),
-        "mode": attr.string(default="link", values=["link", "copy"]),
+        "mode": attr.string(default="copy", values=["link", "copy"]),
         "_go_toolchain": attr.label(default = Label("@io_bazel_rules_go_toolchain//:go_toolchain")),
     },
 )
