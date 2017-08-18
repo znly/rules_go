@@ -322,10 +322,62 @@ func (g *generator) dependencies(imports packages.PlatformStrings, pkgRel string
 	return deps
 }
 
-func (g *generator) options(opts packages.PlatformStrings, rel string) packages.PlatformStrings {
-	// TODO(jayconrod): paths in options (for example, include directories) should
-	// be interpreted relative to the Go package. If the Go package is different
-	// than the Bazel package (as it may be in flat mode), these paths will not
-	// be correct. We should adjust them here, but they are difficult to identify.
+var (
+	// shortOptPrefixes are strings that come at the beginning of an option
+	// argument that includes a path, e.g., -Ifoo/bar.
+	shortOptPrefixes = []string{"-I", "-L", "-F"}
+
+	// longOptPrefixes are separate arguments that come before a path argument,
+	// e.g., -iquote foo/bar.
+	longOptPrefixes = []string{"-I", "-L", "-F", "-iquote", "-isystem", "-framework"}
+)
+
+// options transforms package-relative paths in cgo options into repository-
+// root-relative paths that Bazel can understand. For example, if a cgo file
+// in //foo declares an include flag in its copts: "-Ibar", this method
+// will transform that flag into "-Ifoo/bar".
+func (g *generator) options(opts packages.PlatformStrings, pkgRel string) packages.PlatformStrings {
+	fixPath := func(opt string) string {
+		if strings.HasPrefix(opt, "/") {
+			return opt
+		}
+		return path.Clean(path.Join(pkgRel, opt))
+	}
+
+	fixOpts := func(opts []string) ([]string, error) {
+		fixedOpts := make([]string, len(opts))
+		isPath := false
+		for i, opt := range opts {
+			if isPath {
+				opt = fixPath(opt)
+				isPath = false
+				goto next
+			}
+
+			for _, short := range shortOptPrefixes {
+				if strings.HasPrefix(opt, short) && len(opt) > len(short) {
+					opt = short + fixPath(opt[len(short):])
+					goto next
+				}
+			}
+
+			for _, long := range longOptPrefixes {
+				if opt == long {
+					isPath = true
+					goto next
+				}
+			}
+
+		next:
+			fixedOpts[i] = opt
+		}
+
+		return packages.JoinOptions(fixedOpts), nil
+	}
+
+	opts, errs := opts.MapSlice(fixOpts)
+	if errs != nil {
+		log.Panicf("unexpected error when transforming options with pkg %q: %v", pkgRel, errs)
+	}
 	return opts
 }
