@@ -171,7 +171,7 @@ func buildPackage(c *config.Config, dir string, oldFile *bf.File, goFiles, genGo
 	packageMap := make(map[string]*Package)
 	cgo := false
 	for _, goFile := range goFiles {
-		info, err := goFileInfo(c, dir, goFile)
+		info, err := goFileInfo(c, dir, rel, goFile)
 		if err != nil {
 			log.Print(err)
 			continue
@@ -215,7 +215,7 @@ func buildPackage(c *config.Config, dir string, oldFile *bf.File, goFiles, genGo
 			// Explicitly excluded or found a static file with the same name.
 			continue
 		}
-		info := fileNameInfo(dir, goFile)
+		info := fileNameInfo(dir, rel, goFile)
 		err := pkg.addFile(c, info, false)
 		if err != nil {
 			log.Print(err)
@@ -224,7 +224,7 @@ func buildPackage(c *config.Config, dir string, oldFile *bf.File, goFiles, genGo
 
 	// Process the other files.
 	for _, file := range otherFiles {
-		info, err := otherFileInfo(dir, file)
+		info, err := otherFileInfo(dir, rel, file)
 		if err != nil {
 			log.Print(err)
 			continue

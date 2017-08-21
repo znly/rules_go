@@ -39,7 +39,7 @@ import (
 // information comes from the file's name, from package and import declarations
 // (in .go files), and from +build and cgo comments.
 type fileInfo struct {
-	path, dir, name, ext string
+	path, rel, name, ext string
 
 	// packageName is the Go package name of a .go file, without the
 	// "_test" suffix if it was present. It is empty for non-Go files.
@@ -122,7 +122,7 @@ const (
 
 // fileNameInfo returns information that can be inferred from the name of
 // a file. It does not read data from the file.
-func fileNameInfo(dir, name string) fileInfo {
+func fileNameInfo(dir, rel, name string) fileInfo {
 	ext := path.Ext(name)
 
 	// Categorize the file based on extension. Based on go/build.Context.Import.
@@ -167,7 +167,7 @@ func fileNameInfo(dir, name string) fileInfo {
 
 	return fileInfo{
 		path:     filepath.Join(dir, name),
-		dir:      dir,
+		rel:      rel,
 		name:     name,
 		ext:      ext,
 		category: category,
@@ -180,8 +180,8 @@ func fileNameInfo(dir, name string) fileInfo {
 // goFileInfo returns information about a .go file. It will parse part of the
 // file to determine the package name and imports.
 // This function is intended to match go/build.Context.Import.
-func goFileInfo(c *config.Config, dir, name string) (fileInfo, error) {
-	info := fileNameInfo(dir, name)
+func goFileInfo(c *config.Config, dir, rel, name string) (fileInfo, error) {
+	info := fileNameInfo(dir, rel, name)
 	fset := token.NewFileSet()
 	pf, err := parser.ParseFile(fset, info.path, nil, parser.ImportsOnly|parser.ParseComments)
 	if err != nil {
@@ -278,7 +278,7 @@ func saveCgo(info *fileInfo, cg *ast.CommentGroup) error {
 		}
 		var ok bool
 		for i, opt := range opts {
-			if opt, ok = expandSrcDir(opt, info.dir); !ok {
+			if opt, ok = expandSrcDir(opt, info.rel); !ok {
 				return fmt.Errorf("%s: malformed #cgo argument: %s", info.path, orig)
 			}
 			opts[i] = opt
@@ -458,8 +458,8 @@ func isStandard(goPrefix, importpath string) bool {
 
 // otherFileInfo returns information about a non-.go file. It will parse
 // part of the file to determine build tags.
-func otherFileInfo(dir, name string) (fileInfo, error) {
-	info := fileNameInfo(dir, name)
+func otherFileInfo(dir, rel, name string) (fileInfo, error) {
+	info := fileNameInfo(dir, rel, name)
 	if info.category == ignoredExt {
 		return info, nil
 	}

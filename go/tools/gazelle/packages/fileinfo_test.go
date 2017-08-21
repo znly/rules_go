@@ -29,6 +29,7 @@ import (
 func TestGoFileInfo(t *testing.T) {
 	c := &config.Config{}
 	dir := "."
+	rel := ""
 	for _, tc := range []struct {
 		desc, name, source string
 		want               fileInfo
@@ -147,7 +148,7 @@ package route
 		}
 		defer os.Remove(tc.name)
 
-		got, err := goFileInfo(c, dir, tc.name)
+		got, err := goFileInfo(c, dir, rel, tc.name)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -171,6 +172,7 @@ package route
 func TestGoFileInfoFailures(t *testing.T) {
 	c := &config.Config{}
 	dir := "."
+	rel := ""
 	for _, tc := range []struct {
 		desc, name, source, wantError string
 	}{
@@ -206,7 +208,7 @@ import "C"
 		defer os.Remove(tc.name)
 
 		var errorText string
-		if _, err := goFileInfo(c, dir, tc.name); err != nil {
+		if _, err := goFileInfo(c, dir, rel, tc.name); err != nil {
 			errorText = err.Error()
 		}
 
@@ -218,6 +220,7 @@ import "C"
 
 func TestOtherFileInfo(t *testing.T) {
 	dir := "."
+	rel := ""
 	for _, tc := range []struct {
 		desc, name, source string
 		wantTags           []string
@@ -243,7 +246,7 @@ func TestOtherFileInfo(t *testing.T) {
 		}
 		defer os.Remove(tc.name)
 
-		got, err := otherFileInfo(dir, tc.name)
+		got, err := otherFileInfo(dir, rel, tc.name)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -258,6 +261,7 @@ func TestOtherFileInfo(t *testing.T) {
 
 func TestOtherFileInfoFailures(t *testing.T) {
 	dir := "."
+	rel := ""
 	for _, tc := range []struct {
 		desc, name, source, wantError string
 	}{
@@ -280,7 +284,7 @@ func TestOtherFileInfoFailures(t *testing.T) {
 		defer os.Remove(tc.name)
 
 		var errorText string
-		if _, err := otherFileInfo(dir, tc.name); err != nil {
+		if _, err := otherFileInfo(dir, rel, tc.name); err != nil {
 			errorText = err.Error()
 		}
 
@@ -496,10 +500,10 @@ func TestFileNameInfo(t *testing.T) {
 		},
 	} {
 		tc.want.name = tc.name
-		tc.want.dir = "dir"
+		tc.want.rel = "dir"
 		tc.want.path = filepath.Join("dir", tc.name)
 
-		if got := fileNameInfo("dir", tc.name); !reflect.DeepEqual(got, tc.want) {
+		if got := fileNameInfo("dir", "dir", tc.name); !reflect.DeepEqual(got, tc.want) {
 			t.Errorf("case %q: got %#v; want %#v", tc.desc, got, tc.want)
 		}
 	}
@@ -508,6 +512,7 @@ func TestFileNameInfo(t *testing.T) {
 func TestCgo(t *testing.T) {
 	c := &config.Config{}
 	dir := "."
+	rel := ""
 	for _, tc := range []struct {
 		desc, source string
 		want         fileInfo
@@ -604,7 +609,7 @@ import ("C")
 		}
 		defer os.Remove(path)
 
-		got, err := goFileInfo(c, dir, path)
+		got, err := goFileInfo(c, dir, rel, path)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -621,6 +626,7 @@ import ("C")
 func TestCgoFailures(t *testing.T) {
 	c := &config.Config{}
 	dir := "."
+	rel := ""
 	for _, tc := range []struct {
 		desc, source, wantError string
 	}{
@@ -664,7 +670,7 @@ import "C"
 		defer os.Remove(path)
 
 		var errorText string
-		if _, err := goFileInfo(c, dir, path); err != nil {
+		if _, err := goFileInfo(c, dir, rel, path); err != nil {
 			errorText = err.Error()
 		}
 
@@ -704,6 +710,47 @@ func TestExpandSrcDir(t *testing.T) {
 		} else {
 			t.Logf("%q expands to %q with SRCDIR=%q", test.input, output, expandSrcDirPath)
 		}
+	}
+}
+
+func TestExpandSrcDirRepoRelative(t *testing.T) {
+	repo, err := ioutil.TempDir(os.Getenv("TEST_TEMPDIR"), "repo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	sub := filepath.Join(repo, "sub")
+	if err := os.Mkdir(sub, 0755); err != nil {
+		t.Fatal(err)
+	}
+	goFile := filepath.Join(sub, "sub.go")
+	content := []byte(`package sub
+
+/*
+#cgo CFLAGS: -I${SRCDIR}/..
+*/
+import "C"
+`)
+	if err := ioutil.WriteFile(goFile, content, 0644); err != nil {
+		t.Fatal(err)
+	}
+	c := &config.Config{RepoRoot: repo}
+	got := buildPackage(c, sub, nil, []string{"sub.go"}, nil, nil, false)
+	want := &Package{
+		Name: "sub",
+		Dir:  sub,
+		Rel:  "sub",
+		Library: Target{
+			Sources: PlatformStrings{
+				Generic: []string{"sub.go"},
+			},
+			COpts: PlatformStrings{
+				Generic: []string{"-Isub/..", optSeparator},
+			},
+			Cgo: true,
+		},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("got %#v ; want %#v", got, want)
 	}
 }
 
