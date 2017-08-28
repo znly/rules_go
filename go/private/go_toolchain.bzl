@@ -40,6 +40,7 @@ def _go_toolchain_impl(ctx):
       cgo = ctx.executable.cgo,
       test_generator = ctx.executable.test_generator,
       extract_package = ctx.executable.extract_package,
+      compile_flags = ctx.attr._go_toolchain_flags.compile_flags,
       link_flags = ctx.attr.link_flags,
       cgo_link_flags = ctx.attr.cgo_link_flags,
       crosstool = ctx.files.crosstool,
@@ -66,6 +67,7 @@ go_toolchain_attrs = go_toolchain_core_attrs + {
     "test_generator": attr.label(allow_files = True, single_file = True, executable = True, cfg = "host", default=Label("//go/tools/builders:generate_test_main")),
     "extract_package": attr.label(allow_files = True, single_file = True, executable = True, cfg = "host", default=Label("//go/tools/extract_package")),
     "crosstool": attr.label(default=Label("//tools/defaults:crosstool")),
+    "_go_toolchain_flags": attr.label(default=Label("@io_bazel_rules_go//go/private:go_toolchain_flags")),
 }
 
 go_toolchain = rule(
@@ -80,3 +82,15 @@ Args:
   target_compatible_with: The set of constraints for the outputs built with this toolchain.
   go: The location of the `go` binary.
 """
+
+def _go_toolchain_flags(ctx):
+    return struct(
+        compile_flags = ctx.attr.compile_flags,
+    )
+
+go_toolchain_flags = rule(
+    _go_toolchain_flags,
+    attrs = {
+        "compile_flags": attr.string_list(mandatory=True),
+    },
+)
