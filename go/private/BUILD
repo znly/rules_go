@@ -2,7 +2,7 @@ load("@io_bazel_rules_go//go/private:go_toolchain.bzl", "go_toolchain_flags")
 
 filegroup(
     name = "all_rules",
-    srcs = glob(["*.bzl"]) + ["//go/private/tools:all_rules"],
+    srcs = glob(["**/*.bzl"]),
     visibility = ["//visibility:public"],
 )
 

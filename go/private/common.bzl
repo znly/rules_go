@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@io_bazel_rules_go//go/private:providers.bzl", "GoLibrary")
+
 DEFAULT_LIB = "go_default_library"
 VENDOR_PREFIX = "/vendor/"
 
@@ -103,3 +105,34 @@ def split_srcs(srcs):
 
 def join_srcs(source):
   return depset() + source.go + source.headers + source.asm + source.c
+
+
+def go_importpath(ctx):
+  """Returns the expected importpath of the go_library being built.
+
+  Args:
+    ctx: The skylark Context
+
+  Returns:
+    Go importpath of the library
+  """
+  path = ctx.attr.importpath
+  if path != "":
+    return path
+  if getattr(ctx.attr, "library", None):
+     path = ctx.attr.library[GoLibrary].importpath
+     if path:
+       return path
+  path = ctx.attr._go_prefix.go_prefix
+  if path.endswith("/"):
+    path = path[:-1]
+  if ctx.label.package:
+    path += "/" + ctx.label.package
+  if ctx.label.name != DEFAULT_LIB and not path.endswith(ctx.label.name):
+    path += "/" + ctx.label.name
+  if path.rfind(VENDOR_PREFIX) != -1:
+    path = path[len(VENDOR_PREFIX) + path.rfind(VENDOR_PREFIX):]
+  if path[0] == "/":
+    path = path[1:]
+  return path
+
