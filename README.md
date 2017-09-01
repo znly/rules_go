@@ -1,6 +1,6 @@
 # Go rules for [Bazel](https://bazel.build/)
 
-Bazel 0.5.2 | Bazel HEAD
+Bazel 0.5.4 | Bazel HEAD
 :---: | :---:
 [![Build Status](https://travis-ci.org/bazelbuild/rules_go.svg?branch=master)](https://travis-ci.org/bazelbuild/rules_go) | [![Build Status](http://ci.bazel.io/buildStatus/icon?job=PR/rules_go)](http://ci.bazel.io/view/Bazel%20bootstrap%20and%20maintenance/job/PR/job/rules_go/)
 
@@ -14,18 +14,13 @@ now available!  This will be the last stable tag before requiring Bazel 0.5.4 an
 now available!
 * **July 27, 2017** Bazel 0.5.3 is now available. This includes a change which
 is incompatible with rules\_go 0.5.1 and earlier. rules\_go 0.5.2 should work.
-* **July 17, 2017** Release
-[0.5.2](https://github.com/bazelbuild/rules_go/releases/tag/0.5.2) is now
-available! This fixes an issue with Bazel at HEAD. Note that Bazel 0.5.2 is
-now required.
-* **July 12, 2017** The rules now require Bazel 0.5.2 or newer at HEAD. The
-latest tagged version, 0.5.1, still works with Bazel 0.4.5 though.
 
 ## Contents
 
 * [Overview](#overview)
 * [Setup](#setup)
-* [Generating build files](#generating-build-files)
+  * [Generating build files](#generating-build-files)
+  * [Writing build files by hand](#writing-build-files-by-hand)
 * [Build modes](#build-modes)
 * [FAQ](#faq)
 * [Repository rules](#repository-rules)
@@ -51,12 +46,12 @@ The rules are in the alpha stage of development. They support:
 * tests
 * vendoring
 * cgo
+* cross compilation
 * auto generating BUILD files via [gazelle](go/tools/gazelle/README.md)
 * protocol buffers (via extension //proto:go_proto_library.bzl)
 
 They currently do not support (in order of importance):
 
-* cross compilation
 * bazel-style auto generating BUILD (where the library name is other than
   go_default_library)
 * C/C++ interoperation except cgo (swig etc.)
@@ -70,13 +65,9 @@ The `master` branch is only guaranteed to work with the latest version of Bazel.
 
 ## Setup
 
-* Decide on the name of your package, eg. `github.com/joe/project`. It's
-  important to choose a name that will match where others will download your
-  code. This will be a prefix for import paths within your project.
-* Create a file at the top of your repository named `WORKSPACE`, and add the
-  following code, verbatim. This will let Bazel fetch necessary dependencies
-  from this repository and a few others. You can add more external dependencies
-  to this file later (see [go_repository](#go_repository) below).
+* Create a file at the top of your repository named `WORKSPACE`, and add one
+  of the following snippets, verbatim. This will let Bazel fetch necessary
+  dependencies from this repository and a few others.
   If you're using the latest stable release you can use the following contents:
 
     ```bzl
@@ -105,82 +96,127 @@ The `master` branch is only guaranteed to work with the latest version of Bazel.
     go_register_toolchains()
     ```
 
-* Add a `BUILD` file to the top of your project. Declare the name of your
-  workspace using `go_prefix`. This is used by Bazel to translate between build
-  targets and import paths. Also add the gazelle rule.
+  You can add more external dependencies to this file later (see
+  [go_repository](#go_repository) below).
 
-    ```bzl
-    load("@io_bazel_rules_go//go:def.bzl", "go_prefix", "gazelle")
+* Add a file named `BUILD.bazel` or `BUILD` in the root directory of your
+  project. In general, you need one of these files in every directory
+  with Go code, but you need one in the root directory even if your project
+  doesn't have any Go code there.
 
-    go_prefix("github.com/joe/project")
-    gazelle(name = "gazelle")
-    ```
+* Decide on a *prefix* for your project, e.g., `github.com/example/project`.
+  This must be a prefix of the import paths for libraries in your project. It
+  should generally be the repository URL. Bazel will use this prefix to convert
+  between import paths and labels in build files.
 
 * If your project can be built with `go build`, you can
-  [generate your `BUILD` files](#generating-build-files) using Gazelle. If
-  not, or if you just want to understand the things gazelle is going to
-  generate for you, read on.
+  [generate your build files](#generating-build-files) using Gazelle. If your
+  project isn't compatible with `go build` or if you prefer not to use Gazelle,
+  you can [write build files by hand](#writing-build-files-by-hand).
 
-* For a library `github.com/joe/project/lib`, create `lib/BUILD`, containing
-  a single library with the special name "`go_default_library`." Using this name
-  tells Bazel to set up the files so it can be imported in .go files as (in this
-  example) `github.com/joe/project/lib`. See the
-  [FAQ](#whats-up-with-the-go_default_library-name) below for more information
-  on this name.
+### Generating build files
 
-    ```bzl
-    load("@io_bazel_rules_go//go:def.bzl", "go_library")
+If your project can be built with `go build`, you can generate and update your
+build files automatically using Gazelle, a tool included in this repository.
+See the [Gazelle README](go/tools/gazelle/README.md) for more information.
 
-    go_library(
-        name = "go_default_library",
-        srcs = ["file.go"]
-    )
-    ```
+* Add the code below to the `BUILD.bazel` file in your repository's
+  root directory. Replace the `prefix` string with the prefix you chose for
+  your project earlier.
 
-* Inside your project, you can use this library by declaring a dependency on
-  the full Bazel name (including `:go_default_library`), and in the .go files,
-  import it as shown above.
+```bzl
+load("@io_bazel_rules_go//go:def.bzl", "gazelle")
 
-    ```bzl
-    go_binary(
-        ...
-        deps = ["//lib:go_default_library"]
-    )
-    ```
-
-* To declare a test,
-
-    ```bzl
-    go_test(
-        name = "mytest",
-        srcs = ["file_test.go"],
-        library = ":go_default_library"
-    )
-    ```
-
-* For instructions on how to depend on external libraries,
-  see [Vendoring.md](Vendoring.md).
-
-## Generating build files
-
-If your project can be built with `go build`, you can generate and update
-your `BUILD` files automatically using Gazelle, a tool included in this
-repository. See the [Gazelle README](go/tools/gazelle/README.md)
-for more information.
-
-The `gazelle` rule in your root BUILD file gives you the ability to build and
-run gazelle on your project using Bazel. This is the preferred way to run
-Gazelle.
-
+gazelle(
+    name = "gazelle",
+    prefix = "github.com/example/project",
+)
 ```
+
+* If your project uses vendoring, add `external = "vendored",` below the
+  `prefix` line.
+
+* After adding the `gazelle` rule, run the command below:
+
+```bzl
 bazel run //:gazelle
 ```
 
-By default, Gazelle assumes external dependencies are present in your
-`WORKSPACE` file, following a certain naming convention. For example, it expects
-the repository for `github.com/jane/utils` to be named
-`@com_github_jane_utils`. If you prefer to use vendoring, add
-`external="vendored"` to the `gazelle` rule. See [Vendoring.md](Vendoring.md).
+  This will generate a `BUILD.bazel` file for each Go package in your
+  repository.  You can run the same command in the future to update existing
+  build files with new source files, dependencies, and options.
+
+### Writing build files by hand
+
+If your project doesn't follow `go build` conventions or you prefer not to use
+Gazelle, you can write build files by hand.
+
+* In each directory that contains Go code, create a file named `BUILD.bazel`
+  or `BUILD` (Bazel recognizes both names).
+
+* Add a `load` statement at the top of the file for the rules you use.
+
+```bzl
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+```
+
+* For each library, add a [`go_library`](#go_library) rule like the one below.
+  Source files are listed in `srcs`. Other packages you import are listed in
+  `deps` using
+  [Bazel labels](https://docs.bazel.build/versions/master/build-ref.html#labels)
+  that refer to other `go_library` rules. The library's import path should
+  be specified with `importpath`.
+
+```bzl
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "foo.go",
+        "bar.go",
+    ],
+    deps = [
+        "//tools:go_default_library",
+        "@org_golang_x_utils//stuff:go_default_library",
+    ],
+    importpath = "github.com/example/project/foo",
+    visibility = ["//visibility:public"],
+)
+```
+
+* For each test, add a [`go_test`](#go_test) rule like either of the ones below.
+  You'll need separate `go_test` rules for internal and external tests.
+
+```bzl
+# Internal test
+go_test(
+    name = "go_default_test",
+    srcs = ["foo_test.go"],
+    importpath = "github.com/example/project/foo",
+    library = ":go_default_library",
+)
+
+# External test
+go_test(
+    name = "go_default_xtest",
+    srcs = ["bar_test.go"],
+    deps = [":go_default_library"],
+    importpath = "github.com/example/project/foo",
+)
+```
+
+* For each binary, add a [`go_binary`](#go_binary) rule like the one below.
+
+```bzl
+go_binary(
+    name = "foo",
+    srcs = ["main.go"],
+    deps = [":go_default_library"],
+    importpath = "github.com/example/project/foo",
+)
+```
+
+* For instructions on how to depend on external libraries,
+  see [Vendoring.md](Vendoring.md).
 
 ## Build modes
 
@@ -228,44 +264,36 @@ can be tested, and `--features` is needed to select the race configuration.
 
 ### Can I still use the `go` tool?
 
-Yes, this setup was deliberately chosen to be compatible with the `go`
-tool. Make sure your workspace appears under
+Yes, this setup was deliberately chosen to be compatible with `go build`.
+Make sure your project appears in `GOPATH`, and it should work.
 
-```sh
-$GOPATH/src/github.com/joe/project/
-```
-
-eg.
-
-```sh
-mkdir -p $GOPATH/src/github.com/joe/
-ln -s my/bazel/workspace $GOPATH/src/github.com/joe/project
-```
-
-and it should work.
+Note that `go build` won't be aware of dependencies listed in `WORKSPACE`, so
+these will be downloaded into `GOPATH`. You may also need to check in generated
+files.
 
 ### What's up with the `go_default_library` name?
 
-This is used to keep import paths consistent in libraries that can be built
-with `go build`.
+This was used to keep import paths consistent in libraries that can be built
+with `go build` before the `importpath` attribute was available.
 
 In order to compile and link correctly, the Go rules need to be able to
-translate between Bazel labels and Go import paths. Let's say your project name
-is `github.com/joe/project`, and you have a library in the `foo/bar` directory
-named `bar`. The Bazel label for this would be `//foo/bar:bar`. The Go import
-path for this would be `github.com/joe/project/foo/bar/bar`.
+translate Bazel labels to Go import paths. Libraries that don't set the
+`importpath` attribute explicitly have an implicit dependency on `//:go_prefix`,
+a special rule that specifies an import path prefix. The import path is
+the prefix concatenated with the Bazel package and target name. For example,
+if your prefix was `github.com/example/project`, and your library was
+`//foo/bar:bar`, the Go rules would decide the import path was
+`github.com/example/project/foo/bar/bar`. The stutter at the end is incompatible
+with `go build`, so if the label name is `go_default_library`, the import path
+is just the prefix concatenated with the package name. So if your library is
+`//foo/bar:go_default_library`, the import path is
+`github.com/example/project/foo/bar`.
 
-This is not what `go build` expects; it expects
-`github.com/joe/project/foo/bar/bar` to refer to a library built from .go files
-in the directory `foo/bar/bar`.
-
-In order to avoid this conflict, you can name your library `go_default_library`.
-The full Bazel label for this library would be `//foo/bar:go_default_library`.
-The import path would be `github.com/joe/project/foo/bar`.
-
-`BUILD` files generated with Gazelle, including those in external projects
-imported with [`go_repository`](#go_repository), will have libraries named
-`go_default_library` automatically.
+We are working on deprecating `go_prefix` and making `importpath` mandatory (see
+[#721](https://github.com/bazelbuild/rules_go/issues/721)). When this work is
+complete, the `go_default_library` name won't be needed. We may decide to stop
+using this name in the future (see
+[#265](https://github.com/bazelbuild/rules_go/issues/265)).
 
 ## Repository rules
 
@@ -481,8 +509,8 @@ go_repository(
 
 ### `new_go_repository`
 
-`new_go_repository` is deprecated. Please use [`go_repository`](#go_repository)
-instead, which has the same functionality.
+**DEPRECATED** Use [`go_repository`](#go_repository) instead, which has the same
+functionality.
 
 ## Build rules
 
@@ -491,6 +519,9 @@ instead, which has the same functionality.
 ```bzl
 go_prefix(prefix)
 ```
+
+**DEPRECATED** Set the `importpath` attribute on all rules instead of using
+`go_prefix`. See #721.
 
 `go_prefix` declares the common prefix of the import path which is shared by
 all Go libraries in the repository. A `go_prefix` rule must be declared in the
@@ -522,12 +553,11 @@ Bazel rules during compilation to map import paths to dependencies. See the
 ### `go_library`
 
 ```bzl
-go_library(name, srcs, deps, data, library, gc_goopts)
+go_library(name, srcs, deps, data, importpath, gc_goopts, cgo, cdeps, copts, clinkopts)
 ```
 
 `go_library` builds a Go library from a set of source files that are all part of
-the same package. This library cannot contain cgo code (see
-[`cgo_library`](#cgo_library)).
+the same package.
 
 <table class="table table-condensed table-bordered table-params">
   <colgroup>
@@ -552,14 +582,15 @@ the same package. This library cannot contain cgo code (see
       <td>
         <code>List of labels, required</code>
         <p>List of Go <code>.go</code> (at least one) or ASM <code>.s/.S</code>
-        source files used to build the library</p>
+        source files used to build the library. If <code>cgo = True</code>, then
+        this list may also contain C sources and headers.</p>
       </td>
     </tr>
     <tr>
       <td><code>deps</code></td>
       <td>
         <code>List of labels, optional</code>
-        <p>List of other libraries to linked to this library target</p>
+        <p>List of Go libraries this library imports directly.</p>
       </td>
     </tr>
     <tr>
@@ -570,13 +601,12 @@ the same package. This library cannot contain cgo code (see
       </td>
     </tr>
     <tr>
-      <td><code>library</code></td>
+      <td><code>importpath</code></td>
       <td>
-        <code>Label, optional</code>
-        <p>A label of another rule with Go `srcs`, `deps`, and `data`. When this
-        library is compiled, the sources from this attribute will be combined
-        with `srcs`. This is commonly used to depend on Go sources in
-        `cgo_library`.</p>
+        <code>String, optional</code>
+        <p>The import path of this library. If unspecified, the library will
+        have an implicit dependency on <code>//:go_prefix</code>, and the
+        import path will be derived from the prefix and the library's label.</p>
       </td>
     </tr>
     <tr>
@@ -590,14 +620,76 @@ the same package. This library cannot contain cgo code (see
         shell tokenization</a>.</p>
       </td>
     </tr>
+    <tr>
+      <td><code>cgo</code></td>
+      <td>
+        <code>Boolean, optional, defaults to false</code>
+        <p>Whether this library contains cgo code. If true, <code>srcs</code>
+        may contain cgo and C source files, <code>cdeps</code> may contain
+        C/C++ libraries, and <code>copts</code> and <code>clinkopts</code>
+        will be passed to the C compiler and linker.</p>
+      </td>
+    </tr>
+    <tr>
+      <td><code>cdeps</code></td>
+      <td>
+        <code>List of labels, optional</code>
+        <p>List of libraries that the cgo-generated library depends on. Only
+        valid if <code>cgo = True</code>.</p>
+      </td>
+    </tr>
+    <tr>
+      <td><code>copts</code></td>
+      <td>
+        <code>List of strings, optional</code>
+        <p>List of flags to pass to the C compiler when building cgo code.
+        Only valid if <code>cgo = True</code>. Subject to
+        <a href="https://bazel.build/versions/master/docs/be/make-variables.html#make-var-substitution">Make
+        variable substitution</a> and
+        <a href="https://bazel.build/versions/master/docs/be/common-definitions.html#sh-tokenization">Bourne
+        shell tokenization</a>.</p>
+      </td>
+    </tr>
+    <tr>
+      <td><code>clinkopts</code></td>
+      <td>
+        <code>List of strings, optional</code>
+        <p>List of flags to pass to the C linker when linking a binary with
+        cgo code. Only valid if <code>cgo = True</code>. Subject to
+        <a href="https://bazel.build/versions/master/docs/be/make-variables.html#make-var-substitution">Make
+        variable substitution</a> and
+        <a href="https://bazel.build/versions/master/docs/be/common-definitions.html#sh-tokenization">Bourne
+        shell tokenization</a>.</p>
+      </td>
+    </tr>
   </tbody>
 </table>
+
+#### Example
+
+```bzl
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "foo.go",
+        "bar.go",
+    ],
+    deps = [
+        "//tools:go_default_library",
+        "@org_golang_x_utils//stuff:go_default_library",
+    ],
+    importpath = "github.com/example/project/foo",
+    visibility = ["//visibility:public"],
+)
+```
 
 ### `cgo_library`
 
 ```bzl
 cgo_library(name, srcs, copts, clinkopts, cdeps, deps, data, gc_goopts)
 ```
+
+**DEPRECATED** Use `go_library` with `cgo = True` instead.
 
 `cgo_library` builds a Go library from a set of cgo source files that are part
 of the same package. This library cannot contain pure Go code (see the note
@@ -704,12 +796,12 @@ go_library(
 ### `go_binary`
 
 ```bzl
-go_binary(name, srcs, deps, data, library, linkstamp, x_defs, gc_goopts, gc_linkopts)
+go_binary(name, srcs, deps, data, importpath, library, cgo, cdeps, copts, clinkopts, linkstamp, x_defs, gc_goopts, gc_linkopts)
 ```
 
 `go_binary` builds an executable from a set of source files, which must all be
-in the `main` package. You can run the with `bazel run`, or you can run it
-directly.
+in the `main` package. You can run the binary with `bazel run`, or you can
+build it with `bazel build` and run it directly.
 
 <table class="table table-condensed table-bordered table-params">
   <colgroup>
@@ -734,14 +826,15 @@ directly.
       <td>
         <code>List of labels, required</code>
         <p>List of Go <code>.go</code> (at least one) or ASM <code>.s/.S</code>
-        source files used to build the binary</p>
+        source files used to build the binary. If <code>cgo = True</code>, then
+        this list may also contain C sources and headers.</p>
       </td>
     </tr>
     <tr>
       <td><code>deps</code></td>
       <td>
         <code>List of labels, optional</code>
-        <p>List of other Go libraries to linked to this binary target</p>
+        <p>List of Go libraries this library imports directly.</p>
       </td>
     </tr>
     <tr>
@@ -752,13 +845,64 @@ directly.
       </td>
     </tr>
     <tr>
+      <td><code>importpath</code></td>
+      <td>
+        <code>String, optional</code>
+        <p>The import path of this binary. If unspecified, the binary will
+        have an implicit dependency on <code>//:go_prefix</code>, and the
+        import path will be derived from the prefix and the binary's label.
+        Binary import paths are used to prepare repositories for export.</p>
+      </td>
+    </tr>
+    <tr>
       <td><code>library</code></td>
       <td>
         <code>Label, optional</code>
-        <p>A label of another rule with Go `srcs`, `deps`, and `data`. When this
-        binary is compiled, the sources from this attribute will be combined
-        with `srcs`. This is commonly used to depend on Go sources in
-        `cgo_library`.</p>
+        <p>A label of a <code>go_library</code> with the same packge name.
+        When this binary is compiled, the <code>srcs</code>, <code>deps</code>,
+        and <code>data</code> from this library will be included.</p>
+      </td>
+    </tr>
+    <tr>
+      <td><code>cgo</code></td>
+      <td>
+        <code>Boolean, optional, defaults to false</code>
+        <p>Whether this binary contains cgo code. If true, <code>srcs</code>
+        may contain cgo and C source files, <code>cdeps</code> may contain
+        C/C++ libraries, and <code>copts</code> and <code>clinkopts</code>
+        will be passed to the C compiler and linker.</p>
+      </td>
+    </tr>
+    <tr>
+      <td><code>cdeps</code></td>
+      <td>
+        <code>List of labels, optional</code>
+        <p>List of libraries that the cgo-generated library depends on. Only
+        valid if <code>cgo = True</code>.</p>
+      </td>
+    </tr>
+    <tr>
+      <td><code>copts</code></td>
+      <td>
+        <code>List of strings, optional</code>
+        <p>List of flags to pass to the C compiler when building cgo code.
+        Only valid if <code>cgo = True</code>. Subject to
+        <a href="https://bazel.build/versions/master/docs/be/make-variables.html#make-var-substitution">Make
+        variable substitution</a> and
+        <a href="https://bazel.build/versions/master/docs/be/common-definitions.html#sh-tokenization">Bourne
+        shell tokenization</a>.</p>
+      </td>
+    </tr>
+    <tr>
+      <td><code>clinkopts</code></td>
+      <td>
+        <code>List of strings, optional</code>
+        <p>List of flags to pass to the C linker when linking a binary with
+        cgo code. Only valid if <code>cgo = True</code>. Subject to
+        <a href="https://bazel.build/versions/master/docs/be/make-variables.html#make-var-substitution">Make
+        variable substitution</a> and
+        <a href="https://bazel.build/versions/master/docs/be/common-definitions.html#sh-tokenization">Bourne
+        shell tokenization</a>.</p>
       </td>
     </tr>
     <tr>
@@ -822,7 +966,9 @@ directly.
 ### `go_test`
 
 ```bzl
-go_test(name, srcs, deps, data, library, gc_goopts, gc_linkopts, rundir)
+go_test(name, srcs, deps, data, importpath, library,
+    cgo, cdeps, copts, clinkopts,
+    linkstamp, x_defs, gc_goopts, gc_linkopts, rundir)
 ```
 
 `go_test` builds a set of tests that can be run with `bazel test`. This can
@@ -883,14 +1029,101 @@ arguments to Bazel.
       </td>
     </tr>
     <tr>
+      <td><code>importpath</code></td>
+      <td>
+        <code>String, optional</code>
+        <p>The import path of this test. If unspecified, the test will
+        have an implicit dependency on <code>//:go_prefix</code>, and the
+        import path will be derived from the prefix and the test's label.
+        Test import paths are used to prepare repositories for export.</p>
+      </td>
+    </tr>
+    <tr>
       <td><code>library</code></td>
       <td>
         <code>Label, optional</code>
-        <p>A label of another rule with Go `srcs`, `deps`, and `data`. When this
-        library is compiled, the sources from this attribute will be combined
-        with `srcs`.</p>
+        <p>A label of a <code>go_library</code> with the same packge name.
+        When this test is compiled, the <code>srcs</code>, <code>deps</code>,
+        and <code>data</code> from this library will be included. This is
+        useful for creating internal tests which are compiled together with
+        the package being tested.</p>
       </td>
     </tr>
+    <tr>
+      <td><code>cgo</code></td>
+      <td>
+        <code>Boolean, optional, defaults to false</code>
+        <p>Whether this test contains cgo code. If true, <code>srcs</code>
+        may contain cgo and C source files, <code>cdeps</code> may contain
+        C/C++ libraries, and <code>copts</code> and <code>clinkopts</code>
+        will be passed to the C compiler and linker.</p>
+      </td>
+    </tr>
+    <tr>
+      <td><code>cdeps</code></td>
+      <td>
+        <code>List of labels, optional</code>
+        <p>List of libraries that the cgo-generated library depends on. Only
+        valid if <code>cgo = True</code>.</p>
+      </td>
+    </tr>
+    <tr>
+      <td><code>copts</code></td>
+      <td>
+        <code>List of strings, optional</code>
+        <p>List of flags to pass to the C compiler when building cgo code.
+        Only valid if <code>cgo = True</code>. Subject to
+        <a href="https://bazel.build/versions/master/docs/be/make-variables.html#make-var-substitution">Make
+        variable substitution</a> and
+        <a href="https://bazel.build/versions/master/docs/be/common-definitions.html#sh-tokenization">Bourne
+        shell tokenization</a>.</p>
+      </td>
+    </tr>
+    <tr>
+      <td><code>clinkopts</code></td>
+      <td>
+        <code>List of strings, optional</code>
+        <p>List of flags to pass to the C linker when linking a test with
+        cgo code. Only valid if <code>cgo = True</code>. Subject to
+        <a href="https://bazel.build/versions/master/docs/be/make-variables.html#make-var-substitution">Make
+        variable substitution</a> and
+        <a href="https://bazel.build/versions/master/docs/be/common-definitions.html#sh-tokenization">Bourne
+        shell tokenization</a>.</p>
+      </td>
+    </tr>
+    <tr>
+      <td><code>linkstamp</code></td>
+      <td>
+        <code>String; optional; default is ""</code>
+        <p>The name of a package containing global variables set by the linker
+        as part of a link stamp. This may be used to embed version information
+        in the generated test. The -X flags will be of the form
+        <code>-X <i>linkstamp</i>.KEY=VALUE</code>. The keys and values are
+        read from <code>bazel-bin/volatile-status.txt</code> and
+        <code>bazel-bin/stable-status.txt</code>. If you build with
+        <code>--workspace_status_command=<i>./status.sh</i></code>, the output
+        of <code>status.sh</code> will be written to these files.
+        <a href="https://github.com/bazelbuild/bazel/blob/master/tools/buildstamp/get_workspace_status">
+        Bazel <code>tools/buildstamp/get_workspace_status</code></a> is
+        a good template which prints Git workspace status.</p>
+      </td>
+    </tr>
+    <tr>
+      <td><code>x_defs</code></td>
+      <td>
+        <code>Dict of strings; optional</code>
+        <p>Additional -X flags to pass to the linker. Keys and values in this
+        dict are passed as <code>-X key=value</code>. This can be used to set
+        static information that doesn't change in each build.</p>
+        <p>If the value is surrounded by curly brackets (e.g.
+        <code>{VAR}</code>), then the value of the corresponding workspace
+        status variable will be used instead. Valid workspace status variables
+        include <code>BUILD_USER</code>, <code>BUILD_EMBED_LABEL</code>, and
+        custom variables provided through a
+        <code>--workspace_status_command</code> as described in
+        <code>linkstamp</code>.</p>
+      </td>
+    </tr>    
     <tr>
       <td><code>gc_goopts</code></td>
       <td>

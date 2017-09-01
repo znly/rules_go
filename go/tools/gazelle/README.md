@@ -27,16 +27,16 @@ To use Gazelle in a new project, add the following to the BUILD or BUILD.bazel
 file in the root directory of your repository:
 
 ```bzl
-load("@io_bazel_rules_go//go:def.bzl", "gazelle", "go_prefix")
+load("@io_bazel_rules_go//go:def.bzl", "gazelle")
 
-go_prefix("github.com/my/project")
-
-gazelle(name = "gazelle")
+gazelle(
+    name = "gazelle",
+    prefix = "github.com/example/project",
+)
 ```
 
-Replace the string in `go_prefix` with the portion of your import path that
-corresponds to your repository. See
-[`go_prefix` documentation](../../../README.md#go_prefix).
+Replace the string in `prefix` with the portion of your import path that
+corresponds to your repository.
 
 After adding those rules, run the command below:
 
@@ -214,13 +214,12 @@ When Gazelle is run by Bazel, most of the flags above can be encoded in the
 `gazelle` macro. For example:
 
 ```bzl
-load("@io_bazel_rules_go//go:def.bzl", "gazelle", "go_prefix")
-
-go_prefix("github.com/my/project")
+load("@io_bazel_rules_go//go:def.bzl", "gazelle")
 
 gazelle(
     name = "gazelle",
     command = "fix",
+    prefix = "github.com/example/project",
     external = "vendored",
     build_tags = [
         "integration",
