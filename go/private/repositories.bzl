@@ -79,7 +79,6 @@ def go_repositories(
       # master, as of 14 Aug 2017
       url = "https://codeload.github.com/bazelbuild/buildtools/zip/799e530642bac55de7e76728fa0c3161484899f6",
       strip_prefix = "buildtools-799e530642bac55de7e76728fa0c3161484899f6",
-      sha256 = "ea23bbec9e86205b71ef647e1755ae0ec400aa76aeb5d13913d3fc3a37afbb5f",
       type = "zip",
   )
 
