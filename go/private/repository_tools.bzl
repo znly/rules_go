@@ -61,6 +61,12 @@ def _go_repository_tools_impl(ctx):
       type = "zip",
   )
 
+  if "TMP" in ctx.os.environ:
+    tmp = ctx.os.environ["TMP"]
+  else:
+    ctx.file("tmp/ignore", content="") # make a file to force the directory to exist
+    tmp = str(ctx.path("tmp").realpath)
+
   # Build something that looks like a normal GOPATH so go install will work
   ctx.symlink(x_tools_path, "src/golang.org/x/tools")
   ctx.symlink(buildtools_path, "src/github.com/bazelbuild/buildtools")
@@ -68,6 +74,7 @@ def _go_repository_tools_impl(ctx):
   env = {
     'GOROOT': str(go_tool.dirname.dirname),
     'GOPATH': str(ctx.path('')),
+    'TMP': tmp,
   }
 
   # build gazelle and fetch_repo
@@ -97,4 +104,5 @@ go_repository_tools = repository_rule(
             single_file = True,
         ),
     },
+    environ = ["TMP"],
 )
