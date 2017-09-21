@@ -81,7 +81,7 @@ func walkPackages(repoRoot, goPrefix, dir string) []*packages.Package {
 		ValidBuildFileNames: config.DefaultValidBuildFileNames,
 	}
 	var pkgs []*packages.Package
-	packages.Walk(c, dir, func(pkg *packages.Package, _ *bf.File) {
+	packages.Walk(c, dir, func(_ *config.Config, pkg *packages.Package, _ *bf.File) {
 		pkgs = append(pkgs, pkg)
 	})
 	return pkgs
@@ -407,7 +407,6 @@ func TestExcluded(t *testing.T) {
 # gazelle:exclude do.go
 
 # gazelle:exclude not.go
-x = 0
 # gazelle:exclude build.go
 
 genrule(
@@ -505,7 +504,7 @@ func TestVendor(t *testing.T) {
 				DepMode:             tc.mode,
 			}
 			var got []*packages.Package
-			packages.Walk(c, dir, func(pkg *packages.Package, _ *bf.File) {
+			packages.Walk(c, dir, func(_ *config.Config, pkg *packages.Package, _ *bf.File) {
 				got = append(got, pkg)
 			})
 
