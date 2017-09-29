@@ -14,9 +14,9 @@
 
 GoLibrary = provider()
 GoBinary = provider()
-CgoLibrary = provider()
 GoPath = provider()
 GoEmbed = provider()
+CgoInfo = provider()
 
 def library_attr(mode):
   """Returns the attribute name for the library of the given mode.

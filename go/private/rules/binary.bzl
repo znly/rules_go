@@ -22,7 +22,12 @@ load("@io_bazel_rules_go//go/private:common.bzl",
 load("@io_bazel_rules_go//go/private:rules/prefix.bzl",
     "go_prefix_default",
 )
-load("@io_bazel_rules_go//go/private:providers.bzl", "GoLibrary", "GoBinary", "GoEmbed")
+load("@io_bazel_rules_go//go/private:providers.bzl",
+    "CgoInfo",
+    "GoLibrary",
+    "GoBinary",
+    "GoEmbed",
+)
 
 def _go_binary_impl(ctx):
   """go_binary_impl emits actions for compiling and linking a go executable."""
@@ -30,14 +35,13 @@ def _go_binary_impl(ctx):
   embed = ctx.attr.embed
   if ctx.attr.library:
     embed = embed + [ctx.attr.library]
-  golib, _, _ = go_toolchain.actions.library(ctx,
+  cgo_info = ctx.attr.cgo_info[CgoInfo] if ctx.attr.cgo_info else None
+  golib, _ = go_toolchain.actions.library(ctx,
       go_toolchain = go_toolchain,
       srcs = ctx.files.srcs,
-      cgo_srcs = ctx.files.cgo_srcs,
       deps = ctx.attr.deps,
-      cgo_object = None,
+      cgo_info = cgo_info,
       embed = embed,
-      want_coverage = False,
       importpath = go_importpath(ctx),
       importable = False,
   )
@@ -99,7 +103,6 @@ go_binary = rule(
             cfg = "data",
         ),
         "srcs": attr.label_list(allow_files = go_filetype),
-        "cgo_srcs": attr.label_list(allow_files = go_filetype),
         "deps": attr.label_list(providers = [GoLibrary]),
         "importpath": attr.string(),
         "library": attr.label(providers = [GoLibrary]),
@@ -108,6 +111,7 @@ go_binary = rule(
         "gc_linkopts": attr.string_list(),
         "linkstamp": attr.string(),
         "x_defs": attr.string_dict(),
+        "cgo_info": attr.label(providers = [CgoInfo]),
         "_go_prefix": attr.label(default = go_prefix_default),
     },
     executable = True,

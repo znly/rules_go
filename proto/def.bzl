@@ -22,11 +22,10 @@ def _go_proto_library_impl(ctx):
     importpath = importpath,
   )
   go_toolchain = ctx.toolchains["@io_bazel_rules_go//go:toolchain"]
-  golib, goembed, _ = go_toolchain.actions.library(ctx,
+  golib, goembed = go_toolchain.actions.library(ctx,
       go_toolchain = go_toolchain,
       srcs = go_srcs,
       deps = ctx.attr.deps + go_proto_toolchain.deps,
-      cgo_object = None,
       embed = ctx.attr.embed,
       want_coverage = ctx.coverage_instrumented(),
       importpath = importpath,
