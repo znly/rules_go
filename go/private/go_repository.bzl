@@ -82,6 +82,7 @@ def _go_repository_impl(ctx):
     cmds = [gazelle, '--go_prefix', ctx.attr.importpath, '--mode', 'fix',
             '--repo_root', ctx.path(''),
             "--build_tags", ",".join(ctx.attr.build_tags),
+            "--external", ctx.attr.build_external,
             "--proto", ctx.attr.build_file_proto_mode]
     if ctx.attr.build_file_name:
         cmds += ["--build_file_name", ctx.attr.build_file_name]
@@ -111,6 +112,7 @@ go_repository = repository_rule(
         "sha256": attr.string(),
 
         # Attributes for a repository that needs automatic build file generation
+        "build_external": attr.string(default="external", values=["external", "vendored"]),
         "build_file_name": attr.string(default="BUILD.bazel,BUILD"),
         "build_file_generation": attr.string(default="auto", values=["on", "auto", "off"]),
         "build_tags": attr.string_list(),
