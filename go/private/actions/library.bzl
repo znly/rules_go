@@ -16,6 +16,7 @@ load("@io_bazel_rules_go//go/private:common.bzl",
     "split_srcs",
     "join_srcs",
     "structs",
+    "sets",
 )
 load("@io_bazel_rules_go//go/private:providers.bzl",
     "CgoInfo",
@@ -39,23 +40,25 @@ def emit_library(ctx, go_toolchain,
   dep_runfiles = [d.data_runfiles for d in deps]
   direct = depset()
   direct_archives = depset()
-  gc_goopts = tuple(ctx.attr.gc_goopts)
-  cover_vars = ()
+  gc_goopts = [] + ctx.attr.gc_goopts
+  cover_vars = []
   if cgo_info:
     build_srcs = cgo_info.gen_go_srcs
     cgo_info_label = ctx.label
   else:
     build_srcs = srcs
     cgo_info_label = None
+
+  direct = sets.union(direct, *[t[GoEmbed].deps for t in embed])
+  direct_archives = sets.union(direct_archives, *[get_archive(t).direct for t in embed])
+
   for t in embed:
     goembed = t[GoEmbed]
-    direct_archives += get_archive(t).direct
     srcs = goembed.srcs + srcs
     build_srcs = goembed.build_srcs + build_srcs
-    cover_vars += goembed.cover_vars
-    direct += goembed.deps
-    dep_runfiles += [t.data_runfiles]
-    gc_goopts += getattr(goembed, "gc_goopts", ())
+    cover_vars.extend(goembed.cover_vars)
+    dep_runfiles.append(t.data_runfiles)
+    gc_goopts.extend(getattr(goembed, "gc_goopts", []))
     embed_cgo_info = getattr(goembed, "cgo_info", None)
     if embed_cgo_info:
       if cgo_info:
@@ -72,20 +75,15 @@ def emit_library(ctx, go_toolchain,
     fail("no go sources")
 
   if cgo_info:
-    dep_runfiles += [cgo_info.runfiles]
+    dep_runfiles.append(cgo_info.runfiles)
 
-  for dep in deps:
-    direct += [dep[GoLibrary]]
-    direct_archives += [get_archive(dep)]
-
-  transitive = depset()
-  for golib in direct:
-    transitive += [golib]
-    transitive += golib.transitive
+  direct = sets.union(direct, [dep[GoLibrary] for dep in deps])
+  direct_archives = sets.union(direct_archives, [get_archive(dep) for dep in deps])
+  transitive = sets.union(direct, *[golib.transitive for golib in direct])
 
   if want_coverage:
     go_srcs, cvars = go_toolchain.actions.cover(ctx, go_toolchain, sources=go_srcs, mode=mode)
-    cover_vars += cvars
+    cover_vars.extend(cvars)
 
   transformed = structs.to_dict(source)
   transformed["go"] = go_srcs
@@ -94,7 +92,7 @@ def emit_library(ctx, go_toolchain,
 
   dylibs = []
   if cgo_info:
-    dylibs += [d for d in cgo_info.deps if d.path.endswith(".so")]
+    dylibs.extend([d for d in cgo_info.deps if d.path.endswith(".so")])
 
   runfiles = ctx.runfiles(files = dylibs, collect_data = True)
   for d in dep_runfiles:
