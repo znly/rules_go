@@ -26,8 +26,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"runtime"
-	"strconv"
 	"strings"
 	"text/template"
 )
@@ -45,14 +43,12 @@ type CoverPackage struct {
 
 // Cases holds template data.
 type Cases struct {
-	Package          string
-	RunDir           string
-	TestNames        []string
-	BenchmarkNames   []string
-	HasTestMain      bool
-	Version17        bool
-	Version18OrNewer bool
-	Cover            []*CoverPackage
+	Package        string
+	RunDir         string
+	TestNames      []string
+	BenchmarkNames []string
+	HasTestMain    bool
+	Cover          []*CoverPackage
 }
 
 var codeTpl = `
@@ -62,13 +58,8 @@ import (
 	"log"
 	"os"
 	"fmt"
-{{if .Version17}}
-	"regexp"
-{{end}}
 	"testing"
-{{if .Version18OrNewer}}
 	"testing/internal/testdeps"
-{{end}}
 
 {{if .TestNames}}
 	undertest "{{.Package}}"
@@ -153,21 +144,12 @@ func main() {
 		testing.RegisterCover(coverage)
 	}
 
-{{if .Version18OrNewer}}
 	m := testing.MainStart(testdeps.TestDeps{}, tests, benchmarks, nil)
 	{{if not .HasTestMain}}
 	os.Exit(m.Run())
 	{{else}}
 	undertest.TestMain(m)
 	{{end}}
-{{else if .Version17}}
-	{{if not .HasTestMain}}
-	testing.Main(regexp.MatchString, tests, benchmarks, nil)
-	{{else}}
-	m := testing.MainStart(regexp.MatchString, tests, benchmarks, nil)
-	undertest.TestMain(m)
-	{{end}}
-{{end}}
 }
 `
 
@@ -294,52 +276,11 @@ func run(args []string) error {
 		}
 	}
 
-	goVersion, err := parseVersion(runtime.Version())
-	if err != nil {
-		return err
-	}
-	if goVersion.Less(version{1, 7}) {
-		return fmt.Errorf("go version %s not supported", runtime.Version())
-	} else if goVersion.Less(version{1, 8}) {
-		cases.Version17 = true
-	} else {
-		cases.Version18OrNewer = true
-	}
-
 	tpl := template.Must(template.New("source").Parse(codeTpl))
 	if err := tpl.Execute(outFile, &cases); err != nil {
 		return fmt.Errorf("template.Execute(%v): %v", cases, err)
 	}
 	return nil
-}
-
-type version []int
-
-func parseVersion(s string) (version, error) {
-	strParts := strings.Split(s[len("go"):], ".")
-	intParts := make([]int, len(strParts))
-	for i, s := range strParts {
-		v, err := strconv.Atoi(s)
-		if err != nil {
-			return nil, fmt.Errorf("non-number in go version: %s", s)
-		}
-		intParts[i] = v
-	}
-	return intParts, nil
-}
-
-func (x version) Less(y version) bool {
-	n := len(x)
-	if len(y) < n {
-		n = len(y)
-	}
-	for i := 0; i < n; i++ {
-		cmp := x[i] - y[i]
-		if cmp != 0 {
-			return cmp < 0
-		}
-	}
-	return len(x) < len(y)
 }
 
 func main() {

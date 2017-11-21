@@ -7,18 +7,18 @@ go_test(
     name = "go_default_test",
     size = "small",
     srcs = [
-        "test_1.7_test.go",
-        "test_other_test.go",
+        "new_test.go",
+        "old_test.go",
     ],
     data = ["@io_bazel_rules_go//go/tools/gazelle/gazelle:gazelle"],
     tags = ["manual"],
 )
 
 bazel_test(
-    name = "build_with_1.7.5",
+    name = "build_with_old_sdk",
     command = "test",
     targets = [":go_default_test"],
-    go_version = "1.7.5",
+    go_version = "1.8.5",
     config = "fetch",
     tags = ["dev"],
     externals = [
