@@ -27,12 +27,12 @@ load("@io_bazel_rules_go//go/private:rules/prefix.bzl",
 load("@io_bazel_rules_go//go/private:rules/binary.bzl", "gc_linkopts")
 load("@io_bazel_rules_go//go/private:providers.bzl",
     "GoLibrary",
-    "GoEmbed",
+    "sources",
 )
 load("@io_bazel_rules_go//go/private:actions/action.bzl",
     "add_go_env",
 )
-load("@io_bazel_rules_go//go/private:actions/archive.bzl",
+load("@io_bazel_rules_go//go/private:rules/aspect.bzl",
     "go_archive_aspect",
     "get_archive",
 )
@@ -57,7 +57,6 @@ def _go_test_impl(ctx):
   else:
     run_dir = pkg_dir(ctx.label.workspace_root, ctx.label.package)
 
-  go_srcs = split_srcs(archive.embed.srcs).go
   main_go = ctx.actions.declare_file(ctx.label.name + "_main_test.go")
   arguments = ctx.actions.args()
   add_go_env(arguments, stdlib, mode)
@@ -71,9 +70,9 @@ def _go_test_impl(ctx):
   ])
   for var in archive.cover_vars:
     arguments.add(["-cover", var])
-  arguments.add(go_srcs)
+  arguments.add(archive.go_srcs)
   ctx.actions.run(
-      inputs = go_srcs,
+      inputs = archive.go_srcs,
       outputs = [main_go],
       mnemonic = "GoTestGenTest",
       executable = go_toolchain.tools.test_generator,
@@ -85,10 +84,13 @@ def _go_test_impl(ctx):
 
   # Now compile the test binary itself
   executable = ctx.outputs.executable
-  main_lib = go_toolchain.actions.binary(ctx, go_toolchain,
+  _, _, goarchive = go_toolchain.actions.binary(ctx, go_toolchain,
       name = ctx.label.name,
-      srcs = [main_go],
-      deps = [ctx.attr.library],
+      source = sources.new(
+          srcs = [main_go],
+          deps = [ctx.attr.library],
+          runfiles = ctx.runfiles(collect_data = True),
+      ),
       importpath = ctx.label.name + "~testmain~",
       gc_linkopts = gc_linkopts(ctx),
       executable = executable,
@@ -98,8 +100,7 @@ def _go_test_impl(ctx):
   # TODO(bazel-team): the Go tests should do a chdir to the directory
   # holding the data files, so open-source go tests continue to work
   # without code changes.
-  runfiles = ctx.runfiles(collect_data = True, files = [executable])
-  runfiles = runfiles.merge(archive.runfiles)
+  runfiles = goarchive.runfiles.merge(ctx.runfiles(files = [executable]))
   return [
       DefaultInfo(
           files = depset([executable]),

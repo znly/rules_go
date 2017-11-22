@@ -20,38 +20,44 @@ load("@io_bazel_rules_go//go/private:mode.bzl",
 )
 load("@io_bazel_rules_go//go/private:providers.bzl",
     "GoLibrary",
-    "GoEmbed",
+    "GoSourceList",
+    "sources",
 )
 load("@io_bazel_rules_go//go/private:rules/prefix.bzl",
     "go_prefix_default",
+)
+load("@io_bazel_rules_go//go/private:rules/aspect.bzl",
+    "get_source_list",
 )
 
 def _go_library_impl(ctx):
   """Implements the go_library() rule."""
   go_toolchain = ctx.toolchains["@io_bazel_rules_go//go:toolchain"]
   mode = get_mode(ctx, ctx.attr._go_toolchain_flags)
-  golib, goembed, goarchive = go_toolchain.actions.library(ctx,
+
+  source = sources.merge([get_source_list(s) for s in ctx.attr.embed] + [sources.new(
+      srcs = ctx.files.srcs,
+      deps = ctx.attr.deps,
+      gc_goopts = ctx.attr.gc_goopts,
+      runfiles = ctx.runfiles(collect_data = True),
+  )])
+
+  golib, _, goarchive = go_toolchain.actions.library(ctx,
       go_toolchain = go_toolchain,
       mode = mode,
-      embed = [t[GoEmbed] for t in ctx.attr.embed] + [GoEmbed(
-          srcs = ctx.files.srcs,
-          deps = ctx.attr.deps,
-          gc_goopts = ctx.attr.gc_goopts,
-          runfiles = ctx.runfiles(collect_data = True),
-      )],
+      source = source,
       want_coverage = ctx.coverage_instrumented(),
       importpath = go_importpath(ctx),
       importable = True,
   )
 
   return [
-      golib, goembed, goarchive,
+      golib, source, goarchive,
       DefaultInfo(
           files = depset([goarchive.data.file]),
-          runfiles = goarchive.runfiles,
       ),
       OutputGroupInfo(
-          cgo_exports = goembed.cgo_exports,
+          cgo_exports = goarchive.cgo_exports,
       ),
   ]
 
@@ -62,7 +68,7 @@ go_library = rule(
         "srcs": attr.label_list(allow_files = True),
         "deps": attr.label_list(providers = [GoLibrary]),
         "importpath": attr.string(),
-        "embed": attr.label_list(providers = [GoEmbed]),
+        "embed": attr.label_list(providers = [GoSourceList]),
         "gc_goopts": attr.string_list(),
         "_go_prefix": attr.label(default = go_prefix_default),
         "_go_toolchain_flags": attr.label(default=Label("@io_bazel_rules_go//go/private:go_toolchain_flags")),
