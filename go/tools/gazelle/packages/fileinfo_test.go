@@ -547,8 +547,7 @@ import "C"
 				genericTags = map[string]bool{"gc": true}
 			}
 			c := &config.Config{
-				GenericTags:           genericTags,
-				ExperimentalPlatforms: true,
+				GenericTags: genericTags,
 			}
 			filename := tc.filename
 			if filename == "" {
