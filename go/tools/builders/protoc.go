@@ -94,7 +94,7 @@ func run(args []string) error {
 	}
 	// Walk the generated files
 	filepath.Walk(*outPath, func(path string, f os.FileInfo, err error) error {
-		if !strings.HasSuffix(path, ".pb.go") {
+		if !strings.HasSuffix(path, ".go") {
 			return nil
 		}
 		info := files[path]
@@ -140,7 +140,7 @@ func run(args []string) error {
 				return err
 			}
 		case !f.expected:
-			fmt.Fprintf(buf, "Unexpected output %v.\n", f.path)
+			//fmt.Fprintf(buf, "Unexpected output %v.\n", f.path)
 		}
 		if buf.Len() > 0 {
 			fmt.Fprintf(buf, "Check that the go_package option is %q.", *importpath)
