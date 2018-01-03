@@ -80,12 +80,25 @@ This is a non build mode specific provider.
 +--------------------------------+-----------------------------------------------------------------+
 | :param:`importpath`            | :type:`string`                                                  |
 +--------------------------------+-----------------------------------------------------------------+
-| The import path for this library. May be None for things that cannot be imported.                |
+| The import path for this library. Will always be set.                                            |
 +--------------------------------+-----------------------------------------------------------------+
-| :param:`exportpath`            | :type:`string`                                                  |
+| :param:`pathtype`              | :type:`string`                                                  |
 +--------------------------------+-----------------------------------------------------------------+
-| The source path for this library. May be None for things that should not be exported to a        |
-| GOPATH.                                                                                          |
+| Information about the source of the importpath.                                                  |
+| It's values can be                                                                               |
+| :value:`explicit`                                                                                |
+|     The importpath was explicitly supplied by the user and the library is importable.            |
+|     This is the normal case.                                                                     |
+| :value:`inferred`                                                                                |
+|     The importpath was inferred from the directory structure and rule name. The library may be   |
+|     importable.                                                                                  |
+|     This is normally true for rules that do not expect to be compiled directly to a library,     |
+|     embeded into another rule instead (source generators)                                        |
+| :value:`export`                                                                                  |
+|     The importpath is used for generated file names, but the library should not be imported by   |
+|     that name.                                                                                   |
+|     This is the case for the implied "main" library of a binary or test, where the import path   |
+|     is not relevant as the package cannot be imported.                                           |
 +--------------------------------+-----------------------------------------------------------------+
 | :param:`resolve`               | :type:`function`                                                |
 +--------------------------------+-----------------------------------------------------------------+
@@ -163,12 +176,7 @@ GoArchiveData represents the compiled form of a package.
 +--------------------------------+-----------------------------------------------------------------+
 | :param:`importpath`            | :type:`string`                                                  |
 +--------------------------------+-----------------------------------------------------------------+
-| The import path for this library. May be None for things that cannot be imported.                |
-+--------------------------------+-----------------------------------------------------------------+
-| :param:`exportpath`            | :type:`string`                                                  |
-+--------------------------------+-----------------------------------------------------------------+
-| The source path for this library. May be None for things that should not be exported to a        |
-| GOPATH.                                                                                          |
+| The import path for this library. Will always be set.                                            |
 +--------------------------------+-----------------------------------------------------------------+
 | :param:`file`                  | :type:`compiled archive file`                                   |
 +--------------------------------+-----------------------------------------------------------------+
