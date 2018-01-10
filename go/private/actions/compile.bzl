@@ -83,12 +83,12 @@ def bootstrap_compile(go,
   if out_lib == None: fail("out_lib is a required parameter")
   if archives:  fail("compile does not accept deps in bootstrap mode")
 
-  args = ["tool", "compile", "-o", out_lib.path]
+  args = ["tool", "compile", "-trimpath", "$(pwd)", "-o", out_lib.path]
   args.extend(gc_goopts)
   args.extend([s.path for s in sources])
   go.actions.run_shell(
       inputs = sources + go.stdlib.files,
       outputs = [out_lib],
       mnemonic = "GoCompile",
-      command = "export GOROOT=$(pwd)/{} && {} {}".format(go.stdlib.root_file.dirname, go.stdlib.go.path, " ".join(args)),
+      command = "export GOROOT=$(pwd)/{} && export GOROOT_FINAL=GOROOT && {} {}".format(go.stdlib.root_file.dirname, go.stdlib.go.path, " ".join(args)),
   )

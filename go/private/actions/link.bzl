@@ -124,14 +124,14 @@ def bootstrap_link(go,
   if executable == None: fail("executable is a required parameter")
 
   inputs = depset([archive.data.file])
-  args = ["tool", "link", "-o", executable.path]
+  args = ["tool", "link", "-s", "-o", executable.path]
   args.extend(gc_linkopts)
   args.append(archive.data.file.path)
   go.actions.run_shell(
       inputs = inputs + go.stdlib.files,
       outputs = [executable],
       mnemonic = "GoLink",
-      command = "export GOROOT=$(pwd)/{} && {} {}".format(go.stdlib.root_file.dirname, go.stdlib.go.path, " ".join(args)),
+      command = "export GOROOT=$(pwd)/{} && export GOROOT_FINAL=GOROOT && {} {}".format(go.stdlib.root_file.dirname, go.stdlib.go.path, " ".join(args)),
   )
 
 def _extract_extldflags(gc_linkopts, extldflags):
