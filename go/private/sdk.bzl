@@ -20,7 +20,10 @@ def _go_host_sdk_impl(ctx):
   _local_sdk(ctx, path)
   _prepare(ctx)
 
-go_host_sdk = repository_rule(_go_host_sdk_impl, environ = ["GOROOT"])
+go_host_sdk = repository_rule(
+    _go_host_sdk_impl,
+    environ = ["GOROOT"],
+)
 
 def _go_download_sdk_impl(ctx):
   if ctx.os.name == 'linux':
@@ -46,11 +49,12 @@ def _go_download_sdk_impl(ctx):
   _remote_sdk(ctx, [url.format(filename) for url in ctx.attr.urls], ctx.attr.strip_prefix, sha256)
   _prepare(ctx)
 
-go_download_sdk = repository_rule(_go_download_sdk_impl,
+go_download_sdk = repository_rule(
+    _go_download_sdk_impl,
     attrs = {
         "sdks": attr.string_list_dict(),
-        "urls": attr.string_list(default=["https://storage.googleapis.com/golang/{}"]),
-        "strip_prefix": attr.string(default="go"),
+        "urls": attr.string_list(default = ["https://storage.googleapis.com/golang/{}"]),
+        "strip_prefix": attr.string(default = "go"),
     },
 )
 
@@ -59,7 +63,8 @@ def _go_local_sdk_impl(ctx):
   _local_sdk(ctx, ctx.attr.path)
   _prepare(ctx)
 
-go_local_sdk = repository_rule(_go_local_sdk_impl,
+go_local_sdk = repository_rule(
+    _go_local_sdk_impl,
     attrs = {
         "path": attr.string(),
     },
@@ -86,7 +91,6 @@ def _go_sdk_impl(ctx):
     _local_sdk(ctx, path)
   _prepare(ctx)
 
-
 def _prepare(ctx):
   # Create a text file with a list of standard packages.
   # OPT: just list directories under src instead of running "go list". No
@@ -106,7 +110,7 @@ go_sdk = repository_rule(
         "path": attr.string(),
         "url": attr.string(),
         "urls": attr.string_list(),
-        "strip_prefix": attr.string(default="go"),
+        "strip_prefix": attr.string(default = "go"),
         "sha256": attr.string(),
     },
 )
@@ -141,4 +145,3 @@ def _detect_host_sdk(ctx):
   if not root:
     fail("host go version failed to report it's GOROOT")
   return root
-

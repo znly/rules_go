@@ -45,7 +45,9 @@ See go/providers.rst#GoArchive for full documentation.
 """
 
 GoAspectProviders = provider()
+
 GoPath = provider()
+
 GoStdLib = provider()
 
 def new_aspect_provider(source = None, archive = None):
@@ -63,4 +65,3 @@ def get_archive(dep):
   if GoAspectProviders in dep:
     return dep[GoAspectProviders].archive
   return dep[GoArchive]
-

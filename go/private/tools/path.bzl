@@ -12,15 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@io_bazel_rules_go//go/private:context.bzl",
+load(
+    "@io_bazel_rules_go//go/private:context.bzl",
     "go_context",
 )
-load("@io_bazel_rules_go//go/private:providers.bzl",
+load(
+    "@io_bazel_rules_go//go/private:providers.bzl",
     "GoLibrary",
     "GoPath",
     "get_archive",
 )
-load("@io_bazel_rules_go//go/private:common.bzl",
+load(
+    "@io_bazel_rules_go//go/private:common.bzl",
     "as_iterable",
 )
 
@@ -109,9 +112,15 @@ Found {} in
 go_path = rule(
     _go_path_impl,
     attrs = {
-        "deps": attr.label_list(providers=[GoLibrary]),
-        "mode": attr.string(default="copy", values=["link", "copy"]),
-        "_go_context_data": attr.label(default=Label("@io_bazel_rules_go//:go_context_data")),
+        "deps": attr.label_list(providers = [GoLibrary]),
+        "mode": attr.string(
+            default = "copy",
+            values = [
+                "link",
+                "copy",
+            ],
+        ),
+        "_go_context_data": attr.label(default = Label("@io_bazel_rules_go//:go_context_data")),
     },
     toolchains = ["@io_bazel_rules_go//go:toolchain"],
 )

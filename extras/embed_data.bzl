@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@io_bazel_rules_go//go/private:context.bzl", #TODO: This ought to be def
+load(
+    "@io_bazel_rules_go//go/private:context.bzl",  #TODO: This ought to be def
     "go_context",
 )
 
@@ -80,7 +81,7 @@ go_embed_data = rule(
             executable = True,
             cfg = "host",
         ),
-        "_go_context_data": attr.label(default=Label("@io_bazel_rules_go//:go_context_data")),
+        "_go_context_data": attr.label(default = Label("@io_bazel_rules_go//:go_context_data")),
     },
     toolchains = ["@io_bazel_rules_go//go:toolchain"],
 )

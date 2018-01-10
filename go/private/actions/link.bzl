@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@io_bazel_rules_go//go/private:common.bzl",
+load(
+    "@io_bazel_rules_go//go/private:common.bzl",
     "sets",
     "as_iterable",
 )
-load("@io_bazel_rules_go//go/private:mode.bzl",
+load(
+    "@io_bazel_rules_go//go/private:mode.bzl",
     "LINKMODE_NORMAL",
 )
 
@@ -157,4 +159,3 @@ def _extract_extldflags(gc_linkopts, extldflags):
     else:
       filtered_gc_linkopts.append(opt)
   return filtered_gc_linkopts, extldflags
-

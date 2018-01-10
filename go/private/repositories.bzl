@@ -17,8 +17,8 @@
 load("@io_bazel_rules_go//go/private:common.bzl", "check_version", "MINIMUM_BAZEL_VERSION")
 load("@io_bazel_rules_go//go/private:repository_tools.bzl", "go_repository_tools")
 load("@io_bazel_rules_go//go/private:go_repository.bzl", "go_repository")
-load('@io_bazel_rules_go//go/private:rules/stdlib.bzl', "go_stdlib")
-load('@io_bazel_rules_go//go/toolchain:toolchains.bzl', "go_register_toolchains")
+load("@io_bazel_rules_go//go/private:rules/stdlib.bzl", "go_stdlib")
+load("@io_bazel_rules_go//go/toolchain:toolchains.bzl", "go_register_toolchains")
 load("@io_bazel_rules_go//go/platform:list.bzl", "GOOS_GOARCH")
 load("@io_bazel_rules_go//proto:gogo.bzl", "gogo_special_proto")
 

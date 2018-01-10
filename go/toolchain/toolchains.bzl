@@ -1,11 +1,14 @@
-load("//go/private:go_toolchain.bzl",
+load(
+    "//go/private:go_toolchain.bzl",
     "go_toolchain",
 )
-load("//go/private:sdk.bzl",
+load(
+    "//go/private:sdk.bzl",
     "go_download_sdk",
     "go_host_sdk",
 )
-load("//go/platform:list.bzl",
+load(
+    "//go/platform:list.bzl",
     "GOARCH",
     "GOOS",
     "GOOS_GOARCH",
@@ -135,6 +138,7 @@ def _generate_toolchains():
   return toolchains
 
 _toolchains = _generate_toolchains()
+
 _label_prefix = "@io_bazel_rules_go//go/toolchain:"
 
 def go_register_toolchains(go_version=DEFAULT_VERSION):
