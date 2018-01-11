@@ -274,7 +274,7 @@ def _stdlib_all():
 def _go_context_data(ctx):
   cpp = ctx.fragments.cpp
   features = ctx.features
-  raw_compiler_options = cpp.compiler_options(features)
+  raw_compiler_options = cpp.unfiltered_compiler_options(features)
   raw_linker_options = cpp.mostly_static_link_options(features, False)
   options = (raw_compiler_options +
       cpp.unfiltered_compiler_options(features) +
