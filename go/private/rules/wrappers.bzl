@@ -17,6 +17,16 @@ load("@io_bazel_rules_go//go/private:rules/library.bzl", "go_library")
 load("@io_bazel_rules_go//go/private:rules/test.bzl", "go_test")
 load("@io_bazel_rules_go//go/private:rules/cgo.bzl", "setup_cgo_library")
 load("@io_bazel_rules_go//go/private:common.bzl", "auto_importpath", "test_library_suffix")
+load(
+    "@io_bazel_rules_go//go/private:mode.bzl",
+    "mode_string",
+)
+load(
+    "@io_bazel_rules_go//go/private:mode.bzl",
+    "LINKMODE_NORMAL",
+    "LINKMODE_C_SHARED",
+    "LINKMODE_C_ARCHIVE",
+)
 
 #TODO(#1208): Remove library attribute
 def go_library_macro(name, srcs=None, embed=[], cgo=False, cdeps=[], copts=[], clinkopts=[], importpath="", library=None, **kwargs):
@@ -70,6 +80,43 @@ def go_binary_macro(name, srcs=None, embed=[], cgo=False, cdeps=[], copts=[], cl
       embed = embed,
       **kwargs
   )
+  link = kwargs.get("link")
+  if link in [LINKMODE_C_SHARED, LINKMODE_C_ARCHIVE]:
+    native.filegroup(
+      name = name + "_cgo_exports",
+      srcs = [":" + name],
+      output_group = "cgo_exports",
+    )
+    native.genrule(
+      name = name + "_c_headers",
+      srcs = [":" + name + "_cgo_exports"],
+      outs = [name + ".h"],
+      cmd = "cp $(<) $(@)",
+    )
+    native.filegroup(
+      name = name + "_binary",
+      srcs = [":" + name],
+      output_group = "binary",
+    )
+    cc_import_kwargs = {}
+    if link == LINKMODE_C_SHARED:
+      cc_import_kwargs["shared_library"] = ":" + name + "_binary"
+    elif link == LINKMODE_C_ARCHIVE:
+      cc_import_kwargs["static_library"] = ":" + name + "_binary"
+    native.cc_import(
+      name = name + "_cc",
+      hdrs = [":" + name + "_c_headers"],
+      alwayslink = 1,
+      visibility = ["//visibility:public"],
+      **cc_import_kwargs
+    )
+    native.objc_import(
+      name = name + "_objc",
+      hdrs = [":" + name + "_c_headers"],
+      alwayslink = 1,
+      archives = [":" + name + "_binary"],
+      visibility = ["//visibility:public"],
+    )
 
 #TODO(#1207): Remove importpath
 #TODO(#1208): Remove library attribute

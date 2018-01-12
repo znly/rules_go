@@ -20,6 +20,8 @@ load(
 load(
     "@io_bazel_rules_go//go/private:mode.bzl",
     "LINKMODE_NORMAL",
+    "LINKMODE_C_SHARED",
+    "LINKMODE_C_ARCHIVE",
 )
 
 def emit_link(go,
@@ -55,8 +57,10 @@ def emit_link(go,
   if archive.source.mode.static:
     gc_linkopts.extend(["-linkmode", "external"])
     extldflags.append("-static")
-  if archive.source.mode.link != LINKMODE_NORMAL:
+  if archive.source.mode.link not in [LINKMODE_NORMAL, LINKMODE_C_SHARED, LINKMODE_C_ARCHIVE]:
     fail("Link mode {} is not yet supported".format(archive.source.mode.link))
+  elif archive.source.mode.link != LINKMODE_NORMAL:
+    gc_linkopts.append("-buildmode=" + archive.source.mode.link)
 
   args = go.args(go)
   args.add(["-L", "."])

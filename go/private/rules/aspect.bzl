@@ -38,6 +38,12 @@ load(
     "GOOS",
     "GOARCH",
 )
+load(
+    "@io_bazel_rules_go//go/private:mode.bzl",
+    "LINKMODE_NORMAL",
+    "LINKMODE_C_SHARED",
+    "LINKMODE_C_ARCHIVE",
+)
 
 def _go_archive_aspect_impl(target, ctx):
   go = go_context(ctx, ctx.rule.attr)
@@ -91,6 +97,15 @@ go_archive_aspect = aspect(
             "off",
             "auto",
         ]),
+        "link": attr.string(
+            values = [
+                LINKMODE_NORMAL,
+                LINKMODE_C_SHARED,
+                LINKMODE_C_ARCHIVE,
+                "auto",
+            ],
+            default = "auto",
+        ),
         "goos": attr.string(
             values = GOOS.keys() + ["auto"],
             default = "auto",

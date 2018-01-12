@@ -22,6 +22,10 @@ LINKMODE_PIE = "pie"
 
 LINKMODE_PLUGIN = "plugin"
 
+LINKMODE_C_SHARED = "c-shared"
+
+LINKMODE_C_ARCHIVE = "c-archive"
+
 def mode_string(mode):
   result = [mode.goos, mode.goarch]
   if mode.static:
@@ -94,13 +98,16 @@ def get_mode(ctx, go_toolchain, go_context_data):
   goarch = getattr(ctx.attr, "goarch", None)
   if goarch == None or goarch == "auto":
     goarch = go_toolchain.default_goarch
+  link_mode = getattr(ctx.attr, "link", LINKMODE_NORMAL)
+  if link_mode in [LINKMODE_C_SHARED, LINKMODE_C_ARCHIVE]:
+    pure = False
 
   return struct(
       static = static,
       race = race,
       msan = msan,
       pure = pure,
-      link = LINKMODE_NORMAL,
+      link = link_mode,
       debug = debug,
       strip = strip,
       goos = goos,

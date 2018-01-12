@@ -41,6 +41,12 @@ load(
     "GOOS",
     "GOARCH",
 )
+load(
+    "@io_bazel_rules_go//go/private:mode.bzl",
+    "LINKMODE_NORMAL",
+    "LINKMODE_C_SHARED",
+    "LINKMODE_C_ARCHIVE",
+)
 
 def _go_binary_impl(ctx):
   """go_binary_impl emits actions for compiling and linking a go executable."""
@@ -61,12 +67,18 @@ def _go_binary_impl(ctx):
       version_file=ctx.version_file,
       info_file=ctx.info_file,
   )
+  outs = depset([executable])
   return [
       library, source, archive,
+      OutputGroupInfo(
+        all_files = outs,
+        binary = outs,
+        cgo_exports = archive.cgo_exports,
+      ),
       DefaultInfo(
-          files = depset([executable]),
-          runfiles = archive.runfiles,
-          executable = executable,
+        files = outs,
+        runfiles = archive.runfiles,
+        executable = executable,
       ),
   ]
 
@@ -118,6 +130,14 @@ go_binary = go_rule(
                 "auto",
             ],
             default = "auto",
+        ),
+        "link": attr.string(
+            values = [
+                LINKMODE_NORMAL,
+                LINKMODE_C_SHARED,
+                LINKMODE_C_ARCHIVE,
+            ],
+            default = LINKMODE_NORMAL,
         ),
         "goos": attr.string(
             values = GOOS.keys() + ["auto"],
