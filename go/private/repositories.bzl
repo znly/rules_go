@@ -97,9 +97,9 @@ def go_rules_dependencies():
   )
   _maybe(native.http_archive,
       name = "com_google_protobuf",
-      # v3.5.0, latest as of 2017-11-24
-      url = "https://codeload.github.com/google/protobuf/zip/2761122b810fe8861004ae785cc3ab39f384d342",
-      strip_prefix = "protobuf-2761122b810fe8861004ae785cc3ab39f384d342",
+      # v3.5.1, latest as of 2018-01-11
+      url = "https://codeload.github.com/google/protobuf/zip/106ffc04be1abf3ff3399f54ccf149815b287dd9",
+      strip_prefix = "protobuf-106ffc04be1abf3ff3399f54ccf149815b287dd9",
       type = "zip",
   )
   _maybe(go_repository,
