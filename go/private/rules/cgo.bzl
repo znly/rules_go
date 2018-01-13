@@ -25,6 +25,7 @@ load(
     "as_set",
     "as_list",
     "as_iterable",
+    "has_objc_files",
 )
 load(
     "@io_bazel_rules_go//go/private:providers.bzl",
@@ -267,14 +268,14 @@ _cgo_collect_info = go_rule(
         ),
         "lib": attr.label(
             mandatory = True,
-            providers = ["cc"],
+            providers = [["cc"], ["objc"]],
         ),
     },
 )
 """No-op rule that collects information from _cgo_codegen and cc_library
 info into a GoSourceList provider for easy consumption."""
 
-def setup_cgo_library(name, srcs, cdeps, copts, clinkopts):
+def setup_cgo_library(name, srcs, cdeps, copts, clinkopts, objc=False):
   # Apply build constraints to source files (both Go and C) but not to header
   # files. Separate filtered Go and C sources.
 
@@ -338,20 +339,41 @@ def setup_cgo_library(name, srcs, cdeps, copts, clinkopts):
   platform_linkopts = platform_copts
 
   cgo_lib_name = name + ".cgo_c_lib"
-  native.cc_library(
-      name = cgo_lib_name,
-      srcs = [select_c_files],
-      deps = cdeps,
-      copts = copts + platform_copts + [
-          # The generated thunks often contain unused variables.
-          "-Wno-unused-variable",
-      ],
-      linkopts = clinkopts + platform_linkopts,
-      linkstatic = 1,
-      # _cgo_.o needs all symbols because _cgo_import needs to see them.
-      alwayslink = 1,
-      visibility = ["//visibility:private"],
-  )
+
+  if objc:
+    # TODO: propagate objc_library options
+    native.objc_library(
+        name = cgo_lib_name,
+        srcs = [select_c_files],
+        deps = cdeps,
+        enable_modules = 1,
+        copts = copts + platform_copts + [
+            # The generated thunks often contain unused variables.
+            "-Wno-unused-variable",
+        ],
+        # _cgo_.o needs all symbols because _cgo_import needs to see them.
+        alwayslink = 1,
+        visibility = ["//visibility:private"],
+    )
+    # Enable objc for cc_binary
+    copts = copts + [
+      "-x objective-c -fmodules -fobjc-arc",
+    ]
+  else:
+    native.cc_library(
+        name = cgo_lib_name,
+        srcs = [select_c_files],
+        deps = cdeps,
+        copts = copts + platform_copts + [
+            # The generated thunks often contain unused variables.
+            "-Wno-unused-variable",
+        ],
+        linkopts = clinkopts + platform_linkopts,
+        linkstatic = 1,
+        # _cgo_.o needs all symbols because _cgo_import needs to see them.
+        alwayslink = 1,
+        visibility = ["//visibility:private"],
+    )
 
   # Create a loadable object with no undefined references. cgo reads this
   # when it generates _cgo_import.go.
@@ -361,7 +383,8 @@ def setup_cgo_library(name, srcs, cdeps, copts, clinkopts):
       srcs = [select_main_c],
       deps = cdeps + [cgo_lib_name],
       copts = copts,
-      linkopts = clinkopts,
+      linkstatic = 1,
+      linkopts = clinkopts + platform_linkopts,
       visibility = ["//visibility:private"],
   )
 

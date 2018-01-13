@@ -29,7 +29,7 @@ load(
 )
 
 #TODO(#1208): Remove library attribute
-def go_library_macro(name, srcs=None, embed=[], cgo=False, cdeps=[], copts=[], clinkopts=[], importpath="", library=None, **kwargs):
+def go_library_macro(name, srcs=None, embed=[], cgo=False, cdeps=[], copts=[], clinkopts=[], importpath="", library=None, objc=False, **kwargs):
   """See go/core.rst#go_library for full documentation."""
   if library and native.repository_name() == "@":
     print("\nDEPRECATED: //{}:{} : the library attribute on go_library is deprecated. Please migrate to embed.".format(native.package_name(), name))
@@ -42,6 +42,7 @@ def go_library_macro(name, srcs=None, embed=[], cgo=False, cdeps=[], copts=[], c
         cdeps = cdeps,
         copts = copts,
         clinkopts = clinkopts,
+        objc = objc,
     )
     embed = embed + [cgo_embed]
     srcs = []

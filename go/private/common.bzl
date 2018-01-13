@@ -44,10 +44,17 @@ c_exts = [
     ".cc",
     ".cxx",
     ".cpp",
+    ".m",
+    ".mm",
     ".h",
     ".hh",
     ".hpp",
     ".hxx",
+]
+
+objc_exts = [
+    ".m",
+    ".mm",
 ]
 
 go_filetype = FileType(go_exts + asm_exts)
@@ -72,6 +79,12 @@ def pkg_dir(workspace_root, package_name):
   if package_name:
     return package_name
   return "."
+
+def has_objc_files(srcs):
+  for src in as_iterable(srcs):
+    if any([src.endswith(ext) for ext in objc_exts]):
+      return True
+  return False
 
 def split_srcs(srcs):
   go = []
