@@ -119,6 +119,7 @@ stdlib = go_rule(
             default=Label("@bazel_tools//tools/objc:xcrunwrapper"),
         ),
     },
+    fragments = ["cpp", "apple"],
 )
 
 def _go_stdlib_impl(ctx):
