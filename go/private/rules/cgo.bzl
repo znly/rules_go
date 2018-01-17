@@ -25,7 +25,6 @@ load(
     "as_set",
     "as_list",
     "as_iterable",
-    "has_objc_files",
 )
 load(
     "@io_bazel_rules_go//go/private:providers.bzl",
