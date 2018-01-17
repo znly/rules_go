@@ -167,7 +167,7 @@ func InferProtoMode(c *Config, f *bf.File, directives []Directive) *Config {
 		if name.Value == "@io_bazel_rules_go//proto:def.bzl" {
 			break
 		}
-		if name.Value == "@io_bazel_rules_go//proto:go_proto_library.bzl" {
+		if name.Value == "@io_bazel_rules_go//proto:def.bzl" {
 			mode = LegacyProtoMode
 			break
 		}

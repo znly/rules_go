@@ -275,7 +275,7 @@ func removeLegacyProto(c *config.Config, oldFile *bf.File) *bf.File {
 		}
 
 		if x.Token == "load" && len(c.List) > 0 {
-			if name, ok := c.List[0].(*bf.StringExpr); ok && name.Value == "@io_bazel_rules_go//proto:go_proto_library.bzl" {
+			if name, ok := c.List[0].(*bf.StringExpr); ok && name.Value == "@io_bazel_rules_go//proto:def.bzl" {
 				deletedIndices = append(deletedIndices, i)
 				shouldDeleteProtos = true
 			}

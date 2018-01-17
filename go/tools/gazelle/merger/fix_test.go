@@ -197,7 +197,7 @@ go_proto_library(
 		},
 		{
 			desc: "load and proto removed",
-			old: `load("@io_bazel_rules_go//proto:go_proto_library.bzl", "go_proto_library")
+			old: `load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 
 go_proto_library(
     name = "go_default_library_protos",
@@ -365,7 +365,7 @@ go_grpc_library(
     "go_test",
     foo = "go_binary",  # binary
 )
-load("@io_bazel_rules_go//proto:go_proto_library.bzl", "go_proto_library")
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 
 go_library(
     name = "go_default_library",
@@ -377,7 +377,7 @@ go_library(
     "go_library",
     foo = "go_binary",  # binary
 )
-load("@io_bazel_rules_go//proto:go_proto_library.bzl", "go_proto_library")
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 
 go_library(
     name = "go_default_library",

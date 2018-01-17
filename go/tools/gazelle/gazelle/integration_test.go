@@ -580,7 +580,7 @@ func TestMigrateProtoRules(t *testing.T) {
 		{
 			path: config.DefaultValidBuildFileNames[0],
 			content: `
-load("@io_bazel_rules_go//proto:go_proto_library.bzl", "go_proto_library")
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 
 filegroup(
     name = "go_default_library_protos",
@@ -613,7 +613,7 @@ option go_package = "example.com/repo";
 			args: []string{"update", "-go_prefix", "example.com/repo"},
 			want: `
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
-load("@io_bazel_rules_go//proto:go_proto_library.bzl", "go_proto_library")
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 
 filegroup(
     name = "go_default_library_protos",

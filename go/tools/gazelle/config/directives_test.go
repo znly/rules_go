@@ -116,24 +116,24 @@ func TestInferProtoMode(t *testing.T) {
 			desc: "explicit",
 			content: `# gazelle:proto default
 
-load("@io_bazel_rules_go//proto:go_proto_library.bzl", "go_proto_library")
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 `,
 			want: DefaultProtoMode,
 		}, {
 			desc:    "legacy",
-			content: `load("@io_bazel_rules_go//proto:go_proto_library.bzl", "go_proto_library")`,
+			content: `load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")`,
 			want:    LegacyProtoMode,
 		}, {
 			desc:    "disable",
-			content: `load("@com_example_repo//proto:go_proto_library.bzl", go_proto_library = "x")`,
+			content: `load("@com_example_repo//proto:def.bzl", go_proto_library = "x")`,
 			want:    DisableProtoMode,
 		}, {
 			desc:    "fix legacy",
-			content: `load("@io_bazel_rules_go//proto:go_proto_library.bzl", "go_proto_library")`,
+			content: `load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")`,
 			c:       Config{ShouldFix: true},
 		}, {
 			desc:    "fix disabled",
-			content: `load("@com_example_repo//proto:go_proto_library.bzl", go_proto_library = "x")`,
+			content: `load("@com_example_repo//proto:def.bzl", go_proto_library = "x")`,
 			c:       Config{ShouldFix: true},
 			want:    DisableProtoMode,
 		}, {
