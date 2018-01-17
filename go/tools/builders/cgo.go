@@ -78,6 +78,7 @@ func run(args []string) error {
 	bctx := goenv.BuildContext()
 	bctx.CgoEnabled = true
 	cgoSrcs := []string{}
+	cgoOuts := []string{}
 	pkgName := ""
 	for _, s := range sources {
 		bits := strings.SplitN(s, "=", 2)
@@ -137,6 +138,7 @@ func run(args []string) error {
 		if metadata.isCgo {
 			// add to cgo file list
 			cgoSrcs = append(cgoSrcs, in)
+			cgoOuts = append(cgoOuts, out)
 		} else {
 			// Non cgo file, copy the go and fake the c
 			if err := ioutil.WriteFile(out, data, 0644); err != nil {
@@ -181,6 +183,12 @@ func run(args []string) error {
 	cmd.Env = env
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("error running cgo: %v", err)
+	}
+	// Now we fix up the generated files
+	for _, src := range cgoOuts {
+		if err := fixupLineComments(src); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -229,6 +237,26 @@ func splitQuoted(s string) (r []string, err error) {
 		err = errors.New("unfinished escaping")
 	}
 	return args, err
+}
+
+// removes the abs prefix from //line comments to make source files reproducable
+func fixupLineComments(filename string) error {
+	const linePrefix = "//line "
+	trim := linePrefix + abs(".")
+	body, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return err
+	}
+	lines := strings.Split(string(body), "\n")
+	for i, line := range lines {
+		if strings.HasPrefix(line, trim) {
+			lines[i] = linePrefix + line[len(trim)+1:]
+		}
+	}
+	if err := ioutil.WriteFile(filename, []byte(strings.Join(lines, "\n")), 0666); err != nil {
+		return err
+	}
+	return nil
 }
 
 func main() {
