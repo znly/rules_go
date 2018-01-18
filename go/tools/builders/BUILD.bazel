@@ -126,3 +126,14 @@ go_tool_binary(
     ],
     visibility = ["//visibility:public"],
 )
+
+go_tool_binary(
+    name = "stdlib",
+    srcs = [
+        "env.go",
+        "flags.go",
+        "replicate.go",
+        "stdlib.go",
+    ],
+    visibility = ["//visibility:public"],
+)
