@@ -16,13 +16,10 @@ load("@io_bazel_rules_go//go/private:common.bzl", "env_execute", "executable_ext
 
 def _go_repository_impl(ctx):
   if ctx.attr.urls:
-    # explicit source url
-    if ctx.attr.vcs:
-      fail("cannot specify both of urls and vcs", "vcs")
-    if ctx.attr.commit:
-      fail("cannot specify both of urls and commit", "commit")
-    if ctx.attr.tag:
-      fail("cannot specify both of urls and tag", "tag")
+    # download from explicit source url
+    for key in ("commit", "tag", "vcs", "remote"):
+      if getattr(ctx.attr, key):
+        fail("cannot specifiy both urls and %s" % key, key)
     ctx.download_and_extract(
         url = ctx.attr.urls,
         sha256 = ctx.attr.sha256,
@@ -30,14 +27,20 @@ def _go_repository_impl(ctx):
         type = ctx.attr.type,
     )
   else:
+    # checkout from vcs
     if ctx.attr.commit and ctx.attr.tag:
       fail("cannot specify both of commit and tag", "commit")
     if ctx.attr.commit:
       rev = ctx.attr.commit
+      rev_key = "commit"
     elif ctx.attr.tag:
       rev = ctx.attr.tag
+      rev_key = "tag"
     else:
       fail("neither commit or tag is specified", "commit")
+    for key in ("urls", "strip_prefix", "type", "sha256"):
+      if getattr(ctx.attr, key):
+        fail("cannot specify both %s and %s" % (rev_key, key), key)
 
     # Using fetch repo
     if ctx.attr.vcs and not ctx.attr.remote:
@@ -102,10 +105,10 @@ go_repository = repository_rule(
     attrs = {
         # Fundamental attributes of a go repository
         "importpath": attr.string(mandatory = True),
+
+        # Attributes for a repository that should be checked out from VCS
         "commit": attr.string(),
         "tag": attr.string(),
-
-        # Attributes for a repository that cannot be inferred from the import path
         "vcs": attr.string(
             default = "",
             values = [
