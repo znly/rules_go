@@ -92,7 +92,7 @@ def go_binary_macro(name, srcs=None, embed=[], cgo=False, cdeps=[], copts=[], cl
       name = name + "_c_headers",
       srcs = [":" + name + "_cgo_exports"],
       outs = [name + ".h"],
-      cmd = "cp $(<) $(@)",
+      cmd = "cat $(SRCS) > $(@)",
     )
     native.filegroup(
       name = name + "_binary",
