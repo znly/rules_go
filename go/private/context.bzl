@@ -39,6 +39,10 @@ load(
     "auto_importpath",
     "test_library_suffix",
 )
+load(
+    "@io_bazel_rules_go//go/private:apple.bzl",
+    "ensure_apple_options",
+)
 
 GoContext = provider()
 
@@ -71,6 +75,7 @@ def _new_args(go):
       "-cgo=" + ("0" if go.mode.pure else "1"),
   ])
   if go.cgo_tools:
+    args.add(go.cgo_tools.tags, before_each = "-tags")
     args.add([
       "-compiler_path", go.cgo_tools.compiler_path,
       "-cc", go.cgo_tools.compiler_executable,
@@ -289,6 +294,10 @@ def _go_context_data(ctx):
   linker_options = [o for o in raw_linker_options if not o in [
     "-Wl,--gc-sections",
   ]]
+
+  env = {}
+  tags = []
+  ensure_apple_options(ctx, env, tags, compiler_options, linker_options)
   compiler_path, _ = cpp.ld_executable.rsplit("/", 1)
   return struct(
       strip = ctx.attr.strip,
@@ -305,6 +314,8 @@ def _go_context_data(ctx):
           linker_options = linker_options,
           options = options,
           c_options = cpp.c_options,
+          env = env,
+          tags = tags,
       ),
   )
 
@@ -329,6 +340,12 @@ go_context_data = rule(
             cfg="host",
             default="@go_sdk//:tools",
         ),
+        "_xcode_config": attr.label(default = Label("@bazel_tools//tools/osx:current_xcode_config")),
+        "_xcrunwrapper": attr.label(
+            executable=True,
+            cfg="host",
+            default=Label("@bazel_tools//tools/objc:xcrunwrapper"),
+        ),
     },
-    fragments = ["cpp"],
+    fragments = ["cpp", "apple"],
 )

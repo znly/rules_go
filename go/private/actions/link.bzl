@@ -108,10 +108,14 @@ def emit_link(go,
 
   args.add(archive.data.file)
 
+  env = {}
+  if go.cgo_tools:
+    env.update(go.cgo_tools.env)
   go.actions.run(
       inputs = sets.union(archive.libs, archive.cgo_deps,
                 go.crosstool, stamp_inputs, go.stdlib.files),
       outputs = [executable],
+      env = env,
       mnemonic = "GoLink",
       executable = go.toolchain.tools.link,
       arguments = [args],
