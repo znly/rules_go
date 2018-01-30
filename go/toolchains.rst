@@ -417,7 +417,6 @@ the go context data as an attribute. To do this declare the rule using the go_ru
       attrs = {
           ...
       },
-      toolchains = ["@io_bazel_rules_go//go:toolchain"],
   )
 
 
