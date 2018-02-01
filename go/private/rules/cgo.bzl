@@ -173,7 +173,7 @@ _cgo_codegen = go_rule(
         "srcs": attr.label_list(allow_files = True),
         "deps": attr.label_list(
             allow_files = False,
-            providers = ["cc"],
+            providers = [["cc"], ["objc"]],
         ),
         "copts": attr.string_list(),
         "linkopts": attr.string_list(),
@@ -277,14 +277,14 @@ _cgo_collect_info = go_rule(
         ),
         "lib": attr.label(
             mandatory = True,
-            providers = ["cc"],
+            providers = [["cc"], ["objc"]],
         ),
     },
 )
 """No-op rule that collects information from _cgo_codegen and cc_library
 info into a GoSourceList provider for easy consumption."""
 
-def setup_cgo_library(name, srcs, cdeps, copts, clinkopts):
+def setup_cgo_library(name, srcs, cdeps, copts, clinkopts, objc=None):
   # Apply build constraints to source files (both Go and C) but not to header
   # files. Separate filtered Go and C sources.
 
@@ -350,20 +350,31 @@ def setup_cgo_library(name, srcs, cdeps, copts, clinkopts):
   platform_linkopts = platform_copts
 
   cgo_lib_name = name + ".cgo_c_lib"
-  native.cc_library(
-      name = cgo_lib_name,
-      srcs = [select_c_files],
-      deps = cdeps,
-      copts = copts + platform_copts + [
+  cgo_lib_kwargs = {
+      "name": cgo_lib_name,
+      "srcs": [select_c_files],
+      "deps": cdeps,
+      "copts": copts + platform_copts + [
           # The generated thunks often contain unused variables.
           "-Wno-unused-variable",
       ],
-      linkopts = clinkopts + platform_linkopts,
-      linkstatic = 1,
       # _cgo_.o needs all symbols because _cgo_import needs to see them.
-      alwayslink = 1,
-      visibility = ["//visibility:private"],
-  )
+      "alwayslink": 1,
+      "visibility": ["//visibility:private"],
+  }
+  if objc:
+      cgo_lib_kwargs.update(objc)
+      native.objc_library(**cgo_lib_kwargs)
+      # Enable objc for cc_binary
+      copts.append("-x objective-c")
+      if objc.get("enable_modules") == 1:
+          copts.append("-fmodules")
+  else:
+      cgo_lib_kwargs.update({
+          "linkstatic": 1,
+          "linkopts": clinkopts + platform_linkopts,
+      })
+      native.cc_library(**cgo_lib_kwargs)
 
   # Create a loadable object with no undefined references. cgo reads this
   # when it generates _cgo_import.go.
@@ -373,7 +384,8 @@ def setup_cgo_library(name, srcs, cdeps, copts, clinkopts):
       srcs = [select_main_c],
       deps = cdeps + [cgo_lib_name],
       copts = copts,
-      linkopts = clinkopts,
+      linkstatic = 1,
+      linkopts = clinkopts + platform_linkopts,
       visibility = ["//visibility:private"],
   )
 

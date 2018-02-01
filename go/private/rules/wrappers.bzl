@@ -22,6 +22,7 @@ _CGO_ATTRS = {
     "cdeps": [],
     "copts": [],
     "clinkopts": [],
+    "objc": None,
 }
 
 def _deprecate(attr, name, ruletype, kwargs, message):
