@@ -366,9 +366,9 @@ def setup_cgo_library(name, srcs, cdeps, copts, clinkopts, objc=None):
       cgo_lib_kwargs.update(objc)
       native.objc_library(**cgo_lib_kwargs)
       # Enable objc for cc_binary
-      copts.append("-x objective-c")
+      copts += ["-x", "objective-c"]
       if objc.get("enable_modules") == 1:
-          copts.append("-fmodules")
+          copts += ["-fmodules"]
   else:
       cgo_lib_kwargs.update({
           "linkstatic": 1,

@@ -22,7 +22,11 @@ LINKMODE_PIE = "pie"
 
 LINKMODE_PLUGIN = "plugin"
 
-LINKMODES = [LINKMODE_NORMAL, LINKMODE_PLUGIN]
+LINKMODE_C_SHARED = "c-shared"
+
+LINKMODE_C_ARCHIVE = "c-archive"
+
+LINKMODES = [LINKMODE_NORMAL, LINKMODE_PLUGIN, LINKMODE_C_SHARED, LINKMODE_C_ARCHIVE]
 
 def mode_string(mode):
   result = [mode.goos, mode.goarch]
@@ -78,6 +82,8 @@ def get_mode(ctx, bootstrap, go_toolchain, go_context_data):
       "pure" in ctx.features,
   )
   linkmode = getattr(ctx.attr, "linkmode", LINKMODE_NORMAL)
+  if linkmode in [LINKMODE_C_SHARED, LINKMODE_C_ARCHIVE]:
+    pure = False
   if race and pure:
     # You are not allowed to compile in race mode with pure enabled
     race = False
