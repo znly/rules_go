@@ -47,10 +47,7 @@ func run(args []string) error {
 	if err := goenv.update(); err != nil {
 		return err
 	}
-	// TODO: work out why setting CGO_LDFLAGS breaks cgo
-	goenv.ld_flags = []string{}
-	env := os.Environ()
-	env = append(env, goenv.Env()...)
+	env := goenv.Env()
 
 	if len(dynout) > 0 {
 		dynpackage, err := extractPackage(sources[0])
@@ -181,6 +178,7 @@ func run(args []string) error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Env = env
+	fmt.Println("CGOENV", env)
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("error running cgo: %v", err)
 	}
