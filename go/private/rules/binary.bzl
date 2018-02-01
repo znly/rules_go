@@ -66,10 +66,15 @@ def _go_binary_impl(ctx):
       version_file=ctx.version_file,
       info_file=ctx.info_file,
   )
+  outs = depset([executable])
   return [
       library, source, archive,
+      OutputGroupInfo(
+          binary = outs,
+          cgo_exports = archive.cgo_exports,
+      ),
       DefaultInfo(
-          files = depset([executable]),
+          files = outs,
           runfiles = archive.runfiles,
           executable = executable,
       ),

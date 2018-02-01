@@ -35,6 +35,7 @@ load(
     "paths",
     "structs",
     "goos_to_extension",
+    "goos_to_shared_extension",
     "as_iterable",
 )
 
@@ -243,6 +244,7 @@ def go_context(ctx, attr=None):
       sdk_tools = context_data.sdk_tools,
       actions = ctx.actions,
       exe_extension = goos_to_extension(mode.goos),
+      shared_extension = goos_to_shared_extension(mode.goos),
       crosstool = context_data.crosstool,
       package_list = context_data.package_list,
       importpath = importpath,

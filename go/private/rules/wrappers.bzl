@@ -16,6 +16,11 @@ load("@io_bazel_rules_go//go/private:rules/binary.bzl", "go_binary")
 load("@io_bazel_rules_go//go/private:rules/library.bzl", "go_library")
 load("@io_bazel_rules_go//go/private:rules/test.bzl", "go_test")
 load("@io_bazel_rules_go//go/private:rules/cgo.bzl", "setup_cgo_library")
+load(
+    "@io_bazel_rules_go//go/private:mode.bzl",
+    "LINKMODE_C_SHARED",
+    "LINKMODE_C_ARCHIVE",
+)
 
 _CGO_ATTRS = {
     "srcs": None,
@@ -63,6 +68,45 @@ def go_binary_macro(name, **kwargs):
   _deprecate_importpath(name, "go_binary", kwargs)
   _cgo(name, kwargs)
   go_binary(name = name, **kwargs)
+  _go_binary_c_archive_shared(name, kwargs)
+
+def _go_binary_c_archive_shared(name, kwargs):
+  linkmode = kwargs.get("linkmode")
+  if linkmode not in [LINKMODE_C_SHARED, LINKMODE_C_ARCHIVE]:
+    return
+  c_binary = name + ".c_binary"
+  c_headers = name + ".c_headers"
+  cgo_exports = name + ".cgo_exports"
+  native.filegroup(
+    name = c_binary,
+    srcs = [name],
+    output_group = "binary",
+    visibility = ["//visibility:private"],
+  )
+  native.filegroup(
+    name = cgo_exports,
+    srcs = [name],
+    output_group = "cgo_exports",
+    visibility = ["//visibility:private"],
+  )
+  cc_import_kwargs = {}
+  if linkmode == LINKMODE_C_SHARED:
+    cc_import_kwargs["shared_library"] = c_binary
+  elif linkmode == LINKMODE_C_ARCHIVE:
+    cc_import_kwargs["static_library"] = c_binary
+  native.genrule(
+    name = c_headers,
+    srcs = [cgo_exports],
+    outs = [name + ".h"],
+    cmd = "cat $(SRCS) > $(@)",
+  )
+  native.cc_import(
+    name = name + ".cc",
+    hdrs = [c_headers],
+    alwayslink = 1,
+    visibility = ["//visibility:public"],
+    **cc_import_kwargs
+  )
 
 def go_test_macro(name, **kwargs):
   """See go/core.rst#go_test for full documentation."""
