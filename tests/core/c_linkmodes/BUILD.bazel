@@ -1,0 +1,31 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
+
+test_suite(
+    name = "c_archive",
+)
+
+go_binary(
+    name = "adder_archive",
+    srcs = ["add.go"],
+    cgo = True,
+    linkmode = "c-archive"
+)
+
+cc_test(
+    name = "c-archive_test",
+    srcs = ["add_test_archive.c"],
+    deps = [":adder_archive.cc"],
+)
+
+go_binary(
+    name = "adder_shared",
+    srcs = ["add.go"],
+    cgo = True,
+    linkmode = "c-shared"
+)
+
+cc_test(
+    name = "c-shared_test",
+    srcs = ["add_test_shared.c"],
+    deps = [":adder_shared.cc"],
+)
