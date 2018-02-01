@@ -39,6 +39,10 @@ load(
     "goos_to_shared_extension",
     "as_iterable",
 )
+load(
+    "@io_bazel_rules_go//go/platform:apple.bzl",
+    "apple_ensure_options",
+)
 
 GoContext = provider()
 
@@ -291,6 +295,7 @@ def _go_context_data(ctx):
   tags = []
   if "gotags" in ctx.var:
     tags = ctx.var["gotags"].split(",")
+  apple_ensure_options(ctx, env, tags, compiler_options, linker_options)
   compiler_path, _ = cpp.ld_executable.rsplit("/", 1)
   return struct(
       strip = ctx.attr.strip,
@@ -331,6 +336,9 @@ go_context_data = rule(
             cfg="host",
             default="@go_sdk//:tools",
         ),
+        "_xcode_config": attr.label(
+            default = Label("@bazel_tools//tools/osx:current_xcode_config"),
+        ),
     },
-    fragments = ["cpp"],
+    fragments = ["cpp", "apple"],
 )
