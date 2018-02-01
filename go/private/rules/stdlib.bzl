@@ -24,6 +24,11 @@ load(
     "@io_bazel_rules_go//go/private:rules/rule.bzl",
     "go_rule",
 )
+load(
+    "@io_bazel_rules_go//go/platform:cross.bzl",
+    "GOOS_CROSS",
+    "GOARCH_CROSS",
+)
 
 def _stdlib_library_to_source(go, attr, source, merge):
   pkg = go.declare_directory(go, "pkg")
@@ -56,7 +61,7 @@ def _stdlib_impl(ctx):
   source = go.library_to_source(go, ctx.attr, library, False)
   return [source, library]
 
-stdlib = go_rule(
+_stdlib = go_rule(
     _stdlib_impl,
     bootstrap = True,
     attrs = {
@@ -67,3 +72,8 @@ stdlib = go_rule(
         ),
     },
 )
+
+def stdlib(**kwargs):
+    kwargs["goos"] = GOOS_CROSS
+    kwargs["goarch"] = GOARCH_CROSS
+    _stdlib(**kwargs)

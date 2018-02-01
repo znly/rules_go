@@ -34,6 +34,16 @@ load(
     "@io_bazel_rules_go//go/private:rules/rule.bzl",
     "go_rule",
 )
+load(
+    "@io_bazel_rules_go//go/platform:list.bzl",
+    "GOOS",
+    "GOARCH",
+)
+load(
+    "@io_bazel_rules_go//go/platform:cross.bzl",
+    "GOOS_CROSS",
+    "GOARCH_CROSS",
+)
 
 _CgoCodegen = provider()
 
@@ -292,6 +302,8 @@ def setup_cgo_library(name, srcs, cdeps, copts, clinkopts):
       deps = cdeps,
       copts = copts,
       linkopts = clinkopts,
+      goos = GOOS_CROSS,
+      goarch = GOARCH_CROSS,
       visibility = ["//visibility:private"],
   )
 
@@ -371,6 +383,8 @@ def setup_cgo_library(name, srcs, cdeps, copts, clinkopts):
       name = cgo_import_name,
       cgo_o = cgo_o_name,
       sample_go_srcs = [select_go_files],
+      goos = GOOS_CROSS,
+      goarch = GOARCH_CROSS,
       visibility = ["//visibility:private"],
   )
 

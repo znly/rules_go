@@ -16,6 +16,11 @@ load(
     "@io_bazel_rules_go//go/private:rules/aspect.bzl",
     "go_archive_aspect",
 )
+load(
+    "@io_bazel_rules_go//go/platform:list.bzl",
+    "GOOS",
+    "GOARCH",
+)
 
 _ASPECT_ATTRS = ["pure", "static", "msan", "race"]
 
@@ -31,6 +36,17 @@ def go_rule(implementation, attrs={}, toolchains=[], bootstrap=False, **kwargs):
     attrs["_builders"] = attr.label(default = Label("@io_bazel_rules_go//:builders"))
   else:
     attrs["_builders"] = attr.label(default = None)
+
+  if "goos" not in attrs:
+    attrs["goos"] = attr.string(
+        values = GOOS.keys() + ["auto"],
+        default = "auto",
+    )
+  if "goarch" not in attrs:
+    attrs["goarch"] = attr.string(
+        values = GOARCH.keys() + ["auto"],
+        default = "auto",
+    )
 
   return rule(
       implementation = implementation,
