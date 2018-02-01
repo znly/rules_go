@@ -34,6 +34,16 @@ load(
     "@io_bazel_rules_go//go/private:rules/rule.bzl",
     "go_rule",
 )
+load(
+    "@io_bazel_rules_go//go/platform:list.bzl",
+    "GOOS",
+    "GOARCH",
+)
+load(
+    "@io_bazel_rules_go//go/platform:apple.bzl",
+    APPLE_SELECT_GOOS = "SELECT_GOOS",
+    APPLE_SELECT_GOARCH = "SELECT_GOARCH",
+)
 
 _CgoCodegen = provider()
 
@@ -167,6 +177,14 @@ _cgo_codegen = go_rule(
         ),
         "copts": attr.string_list(),
         "linkopts": attr.string_list(),
+        "goos": attr.string(
+            values = GOOS.keys() + ["auto"],
+            default = "auto",
+        ),
+        "goarch": attr.string(
+            values = GOARCH.keys() + ["auto"],
+            default = "auto",
+        ),
     },
 )
 
@@ -201,6 +219,14 @@ _cgo_import = go_rule(
             single_file = True,
         ),
         "sample_go_srcs": attr.label_list(allow_files = True),
+        "goos": attr.string(
+            values = GOOS.keys() + ["auto"],
+            default = "auto",
+        ),
+        "goarch": attr.string(
+            values = GOARCH.keys() + ["auto"],
+            default = "auto",
+        ),
     },
 )
 """Generates symbol-import directives for cgo
@@ -292,6 +318,8 @@ def setup_cgo_library(name, srcs, cdeps, copts, clinkopts, objc=False):
       deps = cdeps,
       copts = copts,
       linkopts = clinkopts,
+      goos = select(APPLE_SELECT_GOOS),
+      goarch = select(APPLE_SELECT_GOARCH),
       visibility = ["//visibility:private"],
   )
 
@@ -393,7 +421,8 @@ def setup_cgo_library(name, srcs, cdeps, copts, clinkopts, objc=False):
       name = cgo_import_name,
       cgo_o = cgo_o_name,
       sample_go_srcs = [select_go_files],
-      visibility = ["//visibility:private"],
+      goos = select(APPLE_SELECT_GOOS),
+      goarch = select(APPLE_SELECT_GOARCH),
   )
 
   cgo_embed_name = name + ".cgo_embed"
