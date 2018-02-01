@@ -8,5 +8,7 @@
 package(default_visibility = ["//visibility:public"])
 
 load(":list.bzl", "declare_config_settings")
+load(":apple.bzl", "apple_declare_config_settings")
 
 declare_config_settings()
+apple_declare_config_settings()
