@@ -26,7 +26,7 @@ def go_rules_dependencies():
   """See /go/workspace.rst#go-rules-dependencies for full documentation."""
   versions.check(MINIMUM_BAZEL_VERSION)
 
-  # Needed for gazelle and wtool
+  # Needed for gazelle
   _maybe(native.http_archive,
       name = "com_github_bazelbuild_buildtools",
       # master, as of 2017-08-14

@@ -59,7 +59,6 @@ go_path(
         "//go/tools/builders:link",
         "//go/tools/builders:md5sum",
         "//go/tools/fetch_repo",
-        "//go/tools/wtool",
     ],
 )
 
