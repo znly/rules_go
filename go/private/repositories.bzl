@@ -126,9 +126,9 @@ def go_rules_dependencies():
       importpath = "github.com/golang/glog",
   )
   _maybe(go_repository,
-      name = "com_github_jteeuwen_go_bindata",
-      importpath = "github.com/jteeuwen/go-bindata",
-      commit = "a0ff2567cfb70903282db057e799fd826784d41d",
+      name = "com_github_kevinburke_go_bindata",
+      importpath = "github.com/kevinburke/go-bindata",
+      commit = "95df019c0747a093fef2832ae530a37fd2766d16",  # v3.7.0, latest as of 2018-02-07
   )
 
 def _maybe(repo_rule, name, **kwargs):
