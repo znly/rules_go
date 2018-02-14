@@ -24,6 +24,7 @@ load(
     "@io_bazel_rules_go//go/private:providers.bzl",
     _GoLibrary = "GoLibrary",
     _GoSource = "GoSource",
+    _GoPath = "GoPath",
 )
 load(
     "@io_bazel_rules_go//go/private:repositories.bzl",
@@ -85,6 +86,9 @@ GoLibrary = _GoLibrary
 
 GoSource = _GoSource
 """See go/providers.rst#GoSource for full documentation."""
+
+GoPath = _GoPath
+"""See go/providers.rst#GoPath for full documentation."""
 
 go_library = _go_library_macro
 """See go/core.rst#go_library for full documentation."""
