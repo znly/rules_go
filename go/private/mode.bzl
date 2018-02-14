@@ -85,7 +85,7 @@ def get_mode(ctx, host_only, go_toolchain, go_context_data):
   strip_mode = "sometimes"
   if go_context_data:
     strip_mode = go_context_data.strip
-  strip = True
+  strip = False
   if strip_mode == "always":
     strip = True
   elif strip_mode == "sometimes":
