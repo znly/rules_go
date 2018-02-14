@@ -86,6 +86,7 @@ def emit_archive(go, source=None):
       file = out_lib,
       srcs = as_tuple(source.srcs),
       searchpath = searchpath,
+      runfiles = runfiles,
   )
   x_defs = dict(source.x_defs)
   for a in direct:

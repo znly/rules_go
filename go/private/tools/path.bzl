@@ -75,7 +75,7 @@ Found {} in
     seen_libs[golib.importpath] = golib
     package_files = []
     prefix = "src/" + golib.importpath + "/"
-    for src in golib.srcs:
+    for src in as_iterable(golib.srcs) + tuple(as_iterable(golib.runfiles.files)):
       outpath = prefix + src.basename
       if outpath in seen_paths:
         # If we see the same path twice, it's a fatal error
