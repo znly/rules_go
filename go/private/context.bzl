@@ -84,11 +84,16 @@ def _new_args(go):
   return args
 
 def _new_library(go, name=None, importpath=None, resolver=None, importable=True, testfilter=None, **kwargs):
+  if not importpath:
+    importpath = go.importpath
+  importmap = getattr(go._ctx.attr, "importmap", "")
+  if not importmap:
+    importmap = importpath
   return GoLibrary(
       name = go._ctx.label.name if not name else name,
       label = go._ctx.label,
-      importpath = go.importpath if not importpath else importpath,
-      importmap = getattr(go._ctx.attr, "importmap", ""),
+      importpath = importpath,
+      importmap = importmap,
       pathtype = go.pathtype if importable else EXPORT_PATH,
       resolve = resolver,
       testfilter = testfilter,
@@ -134,7 +139,7 @@ def _library_to_source(go, attr, library, coverage_instrumented):
   x_defs = source["x_defs"]
   for k,v in getattr(attr, "x_defs", {}).items():
     if "." not in k:
-      k = "{}.{}".format(library.importpath, k)
+      k = "{}.{}".format(library.importmap, k)
     x_defs[k] = v
   source["x_defs"] = x_defs
   if library.resolve:
