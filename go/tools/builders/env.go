@@ -85,15 +85,15 @@ func absoluteCgoFlags(flags []string) []string {
 	return ret
 }
 
-func envUpdate(old, new []string) []string {
+func envUpdate(oldEnv, newEnv []string) []string {
 	retEnvMap := map[string]string{}
 	retEnv := []string{}
-	for _, e := range old {
+	for _, e := range oldEnv {
 		pair := strings.SplitN(e, "=", 2)
 		k, v := pair[0], pair[1]
 		retEnvMap[k] = v
 	}
-	for _, e := range new {
+	for _, e := range newEnv {
 		pair := strings.SplitN(e, "=", 2)
 		k, v := pair[0], pair[1]
 		if preV := retEnvMap[k]; preV != "" {
