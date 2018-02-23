@@ -5,8 +5,8 @@ Go rules for Bazel_
 .. _Bazel: https://bazel.build/
 .. |travis| image:: https://travis-ci.org/bazelbuild/rules_go.svg?branch=master
   :target: https://travis-ci.org/bazelbuild/rules_go
-.. |jenkins| image:: http://ci.bazel.io/buildStatus/icon?job=PR/rules_go
-  :target: http://ci.bazel.io/view/Bazel%20bootstrap%20and%20maintenance/job/PR/job/rules_go/
+.. |bazelci| image:: https://badge.buildkite.com/7ff4772cf73f716565daee2e0e6f4c8d8dee2b086caf27b6a8.svg
+  :target: https://buildkite.com/bazel/golang-rules-go
 .. _gazelle: https://github.com/bazelbuild/bazel-gazelle
 .. _github.com/bazelbuild/bazel-gazelle: https://github.com/bazelbuild/bazel-gazelle
 .. _vendoring: Vendoring.md
@@ -31,9 +31,9 @@ Go rules for Bazel_
 .. ;; And now we continue with the actual content
 
 ======== =========
-Travis   Jenkins
+Travis   Bazel CI
 ======== =========
-|travis| |jenkins|
+|travis| |bazelci|
 ======== =========
 
 Announcements
