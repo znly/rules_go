@@ -21,6 +21,8 @@ _CGO_ATTRS = {
     "srcs": None,
     "cdeps": [],
     "copts": [],
+    "cxxopts": [],
+    "cppopts": [],
     "clinkopts": [],
 }
 

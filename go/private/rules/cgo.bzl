@@ -99,6 +99,7 @@ def _cgo_codegen_impl(ctx):
   args.add(["-cc", str(cc), "-objdir", out_dir])
 
   c_outs = [cgo_export_h, cgo_export_c]
+  cxx_outs = [cgo_export_h]
   go_outs = [cgo_types]
 
   source = split_srcs(ctx.files.srcs)
@@ -121,6 +122,11 @@ def _cgo_codegen_impl(ctx):
     mangled_stem, src_ext = _mangle(src, stems)
     gen_file = go.declare_file(go, path=mangled_stem + ".cgo1."+src_ext)
     c_outs.append(gen_file)
+    args.add(["-src", gen_file.path + "=" + src.path])
+  for src in source.cxx:
+    mangled_stem, src_ext = _mangle(src, stems)
+    gen_file = go.declare_file(go, path=mangled_stem + ".cgo1."+src_ext)
+    cxx_outs.append(gen_file)
     args.add(["-src", gen_file.path + "=" + src.path])
 
   inputs = sets.union(ctx.files.srcs, go.crosstool, go.stdlib.files,
@@ -147,16 +153,18 @@ def _cgo_codegen_impl(ctx):
   # second is an actual arg to forward to the underlying go tool
   args.add(["--", "--"])
   args.add(copts)
+  cgoenv = dict(go.env)
+  cgoenv.update({
+        "CGO_LDFLAGS": " ".join(linkopts),
+  })
   ctx.actions.run(
       inputs = inputs + go.crosstool,
-      outputs = c_outs + go_outs + [cgo_main],
+      outputs = c_outs + cxx_outs + go_outs + [cgo_main],
       mnemonic = "CGoCodeGen",
       progress_message = "CGoCodeGen %s" % ctx.label,
       executable = go.builders.cgo,
       arguments = [args],
-      env = {
-          "CGO_LDFLAGS": " ".join(linkopts),
-      },
+      env = cgoenv,
   )
 
   return [
@@ -174,6 +182,7 @@ def _cgo_codegen_impl(ctx):
           go_files = as_set(go_outs),
           input_go_files = sets.union(source.go, source.asm),
           c_files = sets.union(c_outs, source.headers),
+          cxx_files = sets.union(cxx_outs, source.headers),
           main_c = as_set([cgo_main]),
       ),
   ]
@@ -187,6 +196,8 @@ _cgo_codegen = go_rule(
             providers = ["cc"],
         ),
         "copts": attr.string_list(),
+        "cxxopts": attr.string_list(),
+        "cppopts": attr.string_list(),
         "linkopts": attr.string_list(),
     },
 )
@@ -295,7 +306,7 @@ _cgo_collect_info = go_rule(
 """No-op rule that collects information from _cgo_codegen and cc_library
 info into a GoSourceList provider for easy consumption."""
 
-def setup_cgo_library(name, srcs, cdeps, copts, clinkopts):
+def setup_cgo_library(name, srcs, cdeps, copts, cxxopts, cppopts, clinkopts):
   # Apply build constraints to source files (both Go and C) but not to header
   # files. Separate filtered Go and C sources.
 
@@ -305,6 +316,8 @@ def setup_cgo_library(name, srcs, cdeps, copts, clinkopts):
       "external/" + REPOSITORY_NAME[1:] if len(REPOSITORY_NAME) > 1 else "",
       PACKAGE_NAME)
   copts = copts + ["-I", base_dir]
+  cxxopts = cxxopts + ["-I", base_dir]
+  cppopts = cppopts + ["-I", base_dir]
 
   cgo_codegen_name = name + ".cgo_codegen"
   _cgo_codegen(
@@ -312,6 +325,8 @@ def setup_cgo_library(name, srcs, cdeps, copts, clinkopts):
       srcs = srcs,
       deps = cdeps,
       copts = copts,
+      cxxopts = cxxopts,
+      cppopts = cppopts,
       linkopts = clinkopts,
       visibility = ["//visibility:private"],
   )
@@ -340,6 +355,14 @@ def setup_cgo_library(name, srcs, cdeps, copts, clinkopts):
       visibility = ["//visibility:private"],
   )
 
+  select_cxx_files = name + ".select_cxx_files"
+  native.filegroup(
+      name = select_cxx_files,
+      srcs = [cgo_codegen_name],
+      output_group = "cxx_files",
+      visibility = ["//visibility:private"],
+  )
+
   select_main_c = name + ".select_main_c"
   native.filegroup(
       name = select_main_c,
@@ -358,11 +381,27 @@ def setup_cgo_library(name, srcs, cdeps, copts, clinkopts):
   })
   platform_linkopts = platform_copts
 
-  cgo_lib_name = name + ".cgo_c_lib"
+  cgo_cxx_lib_name = name + ".cgo_cxx_lib"
+  native.cc_library(
+      name = cgo_cxx_lib_name,
+      srcs = [select_cxx_files],
+      deps = cdeps,
+      copts = cxxopts + platform_copts + [
+          # The generated thunks often contain unused variables.
+          "-Wno-unused-variable",
+      ],
+      linkopts = clinkopts + platform_linkopts,
+      linkstatic = 1,
+      # _cgo_.o needs all symbols because _cgo_import needs to see them.
+      alwayslink = 1,
+      visibility = ["//visibility:private"],
+  )
+
+  cgo_lib_name = name + ".cgo_lib"
   native.cc_library(
       name = cgo_lib_name,
       srcs = [select_c_files],
-      deps = cdeps,
+      deps = cdeps + [cgo_cxx_lib_name],
       copts = copts + platform_copts + [
           # The generated thunks often contain unused variables.
           "-Wno-unused-variable",
