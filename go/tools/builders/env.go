@@ -47,6 +47,8 @@ type GoEnv struct {
 	goarch       string
 	tags         string
 	cc           string
+	c_flags      multiFlag
+	cxx_flags    multiFlag
 	cpp_flags    multiFlag
 	ld_flags     multiFlag
 	shared       bool
@@ -104,7 +106,9 @@ func envFlags(flags *flag.FlagSet) *GoEnv {
 	flags.StringVar(&env.tags, "tags", "", "Only pass through files that match these tags.")
 	flags.BoolVar(&env.shared, "shared", false, "Build in shared mode")
 	flags.StringVar(&env.cc, "cc", "", "Sets the c compiler to use")
-	flags.Var(&env.cpp_flags, "cpp_flag", "An entry to add to the c compiler flags")
+	flags.Var(&env.c_flags, "c_flag", "An entry to add to the C compiler flags")
+	flags.Var(&env.cxx_flags, "cxx_flag", "An entry to add to the C++ compiler flags")
+	flags.Var(&env.cpp_flags, "cpp_flag", "An entry to add to the CPP compiler flags")
 	flags.Var(&env.ld_flags, "ld_flag", "An entry to add to the c linker flags")
 	return env
 }
@@ -150,18 +154,15 @@ func (env *GoEnv) env() []string {
 			fmt.Sprintf("CXX=%s", cc),
 		)
 	}
-	if len(env.cpp_flags) > 0 {
-		v := strings.Join(env.cpp_flags, " ")
-		result = append(result,
-			fmt.Sprintf("CGO_CFLAGS=%s", v),
-			fmt.Sprintf("CGO_CPPFLAGS=%s", v),
-			fmt.Sprintf("CGO_CXXFLAGS=%s", v),
-		)
+	cgoFlags := map[string]multiFlag{
+		"CGO_CFLAGS":   env.c_flags,
+		"CGO_CXXFLAGS": env.cxx_flags,
+		"CGO_CPPFLAGS": env.cpp_flags,
+		"CGO_LDFLAGS":  env.ld_flags,
 	}
-	if len(env.ld_flags) > 0 {
-		result = append(result,
-			fmt.Sprintf("CGO_LDFLAGS=%s", strings.Join(env.ld_flags, " ")),
-		)
+	for envVar, flags := range cgoFlags {
+		v := strings.Join(flags, " ")
+		result = append(result, envVar+"="+v)
 	}
 	return result
 }
