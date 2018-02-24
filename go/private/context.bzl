@@ -96,6 +96,8 @@ def _new_args(go):
       "-compiler_path", go.cgo_tools.compiler_path,
       "-cc", go.cgo_tools.compiler_executable,
     ])
+    args.add(go.cgo_tools.compiler_options, before_each = "-c_flag")
+    args.add(go.cgo_tools.compiler_options, before_each = "-cxx_flag")
     args.add(go.cgo_tools.compiler_options, before_each = "-cpp_flag")
     args.add(go.cgo_tools.linker_options, before_each = "-ld_flag")
   return args
