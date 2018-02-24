@@ -41,16 +41,27 @@ hdr_exts = [
 
 c_exts = [
     ".c",
+    ".h",
+]
+
+cxx_exts = [
     ".cc",
     ".cxx",
     ".cpp",
-    ".m",
-    ".mm",
     ".h",
     ".hh",
     ".hpp",
     ".hxx",
 ]
+
+objc_exts = [
+    ".m",
+    ".mm",
+    ".h",
+    ".hh",
+    ".hpp",
+]
+
 
 go_filetype = FileType(go_exts + asm_exts)
 
@@ -76,6 +87,8 @@ def split_srcs(srcs):
   headers = []
   asm = []
   c = []
+  cxx = []
+  objc = []
   for src in as_iterable(srcs):
     if any([src.basename.endswith(ext) for ext in go_exts]):
       go.append(src)
@@ -85,6 +98,10 @@ def split_srcs(srcs):
       asm.append(src)
     elif any([src.basename.endswith(ext) for ext in c_exts]):
       c.append(src)
+    elif any([src.basename.endswith(ext) for ext in cxx_exts]):
+      cxx.append(src)
+    elif any([src.basename.endswith(ext) for ext in objc_exts]):
+      objc.append(src)
     else:
       fail("Unknown source type {0}".format(src.basename))
   return struct(
@@ -92,6 +109,8 @@ def split_srcs(srcs):
       headers = headers,
       asm = asm,
       c = c,
+      cxx = cxx,
+      objc = objc,
   )
 
 def join_srcs(source):

@@ -89,6 +89,8 @@ def _cgo_codegen_impl(ctx):
   args.add(["-cc", str(cc), "-objdir", out_dir])
 
   c_outs = [cgo_export_h, cgo_export_c]
+  cxx_outs = [cgo_export_h]
+  objc_outs = [cgo_export_h]
   go_outs = [cgo_types]
 
   source = split_srcs(ctx.files.srcs)
@@ -110,6 +112,16 @@ def _cgo_codegen_impl(ctx):
     mangled_stem, src_ext = _mangle(src)
     gen_file = go.declare_file(go, path=mangled_stem + ".cgo1."+src_ext)
     c_outs.append(gen_file)
+    args.add(["-src", gen_file.path + "=" + src.path])
+  for src in source.cxx:
+    mangled_stem, src_ext = _mangle(src)
+    gen_file = go.declare_file(go, path=mangled_stem + ".cgo1."+src_ext)
+    cxx_outs.append(gen_file)
+    args.add(["-src", gen_file.path + "=" + src.path])
+  for src in source.objc:
+    mangled_stem, src_ext = _mangle(src)
+    gen_file = go.declare_file(go, path=mangled_stem + ".cgo1."+src_ext)
+    objc_outs.append(gen_file)
     args.add(["-src", gen_file.path + "=" + src.path])
 
   inputs = sets.union(ctx.files.srcs, go.crosstool, go.stdlib.files,
@@ -136,16 +148,18 @@ def _cgo_codegen_impl(ctx):
   # second is an actual arg to forward to the underlying go tool
   args.add(["--", "--"])
   args.add(copts)
+  cgoenv = dict(go.env)
+  cgoenv.update({
+        "CGO_LDFLAGS": " ".join(linkopts),
+  })
   ctx.actions.run(
       inputs = inputs + go.crosstool,
-      outputs = c_outs + go_outs + [cgo_main],
+      outputs = c_outs + cxx_outs + objc_outs + go_outs + [cgo_main],
       mnemonic = "CGoCodeGen",
       progress_message = "CGoCodeGen %s" % ctx.label,
       executable = go.builders.cgo,
       arguments = [args],
-      env = {
-          "CGO_LDFLAGS": " ".join(linkopts),
-      },
+      env = cgoenv,
   )
 
   return [
@@ -163,6 +177,8 @@ def _cgo_codegen_impl(ctx):
           go_files = as_set(go_outs),
           input_go_files = sets.union(source.go, source.asm),
           c_files = sets.union(c_outs, source.headers),
+          cxx_files = sets.union(cxx_outs, source.headers),
+          objc_files = sets.union(objc_outs, source.headers),
           main_c = as_set([cgo_main]),
       ),
   ]
@@ -176,6 +192,8 @@ _cgo_codegen = go_rule(
             providers = [["cc"], ["objc"]],
         ),
         "copts": attr.string_list(),
+        "cxxopts": attr.string_list(),
+        "cppopts": attr.string_list(),
         "linkopts": attr.string_list(),
     },
 )
@@ -284,7 +302,7 @@ _cgo_collect_info = go_rule(
 """No-op rule that collects information from _cgo_codegen and cc_library
 info into a GoSourceList provider for easy consumption."""
 
-def setup_cgo_library(name, srcs, cdeps, copts, clinkopts, objc=None):
+def setup_cgo_library(name, srcs, cdeps, copts, cxxopts, cppopts, clinkopts, objc=None):
   # Apply build constraints to source files (both Go and C) but not to header
   # files. Separate filtered Go and C sources.
 
@@ -294,6 +312,8 @@ def setup_cgo_library(name, srcs, cdeps, copts, clinkopts, objc=None):
       "external/" + REPOSITORY_NAME[1:] if len(REPOSITORY_NAME) > 1 else "",
       PACKAGE_NAME)
   copts = copts + ["-I", base_dir]
+  cxxopts = cxxopts + ["-I", base_dir]
+  cppopts = cxxopts + ["-I", base_dir]
 
   cgo_codegen_name = name + ".cgo_codegen"
   _cgo_codegen(
@@ -301,6 +321,8 @@ def setup_cgo_library(name, srcs, cdeps, copts, clinkopts, objc=None):
       srcs = srcs,
       deps = cdeps,
       copts = copts,
+      cxxopts = cxxopts,
+      cppopts = cppopts,
       linkopts = clinkopts,
       goos = GOOS_CROSS,
       goarch = GOARCH_CROSS,
@@ -331,6 +353,14 @@ def setup_cgo_library(name, srcs, cdeps, copts, clinkopts, objc=None):
       visibility = ["//visibility:private"],
   )
 
+  select_cxx_files = name + ".select_cxx_files"
+  native.filegroup(
+      name = select_cxx_files,
+      srcs = [cgo_codegen_name],
+      output_group = "cxx_files",
+      visibility = ["//visibility:private"],
+  )
+
   select_main_c = name + ".select_main_c"
   native.filegroup(
       name = select_main_c,
@@ -349,32 +379,50 @@ def setup_cgo_library(name, srcs, cdeps, copts, clinkopts, objc=None):
   })
   platform_linkopts = platform_copts
 
-  cgo_lib_name = name + ".cgo_c_lib"
-  cgo_lib_kwargs = {
-      "name": cgo_lib_name,
-      "srcs": [select_c_files],
-      "deps": cdeps,
-      "copts": copts + platform_copts + [
+  cgo_cxx_lib_name = name + ".cgo_cxx_lib"
+  native.cc_library(
+      name = cgo_cxx_lib_name,
+      srcs = [select_cxx_files],
+      deps = cdeps,
+      copts = cxxopts + platform_copts + [
           # The generated thunks often contain unused variables.
           "-Wno-unused-variable",
       ],
       # _cgo_.o needs all symbols because _cgo_import needs to see them.
-      "alwayslink": 1,
-      "visibility": ["//visibility:private"],
-  }
-  if objc:
-      cgo_lib_kwargs.update(objc)
-      native.objc_library(**cgo_lib_kwargs)
-      # Enable objc for cc_binary
-      copts += ["-x", "objective-c"]
-      if objc.get("enable_modules") == 1:
-          copts += ["-fmodules"]
-  else:
-      cgo_lib_kwargs.update({
-          "linkstatic": 1,
-          "linkopts": clinkopts + platform_linkopts,
-      })
-      native.cc_library(**cgo_lib_kwargs)
+      alwayslink = 1,
+      linkstatic = 1,
+      linkopts = clinkopts + platform_linkopts,
+      visibility = ["//visibility:private"],
+  )
+
+  cgo_lib_name = name + ".cgo_lib"
+  native.cc_library(
+      name = cgo_lib_name,
+      srcs = [select_c_files],
+      deps = cdeps + [cgo_cxx_lib_name],
+      copts = copts + platform_copts + [
+          # The generated thunks often contain unused variables.
+          "-Wno-unused-variable",
+      ],
+      # _cgo_.o needs all symbols because _cgo_import needs to see them.
+      alwayslink = 1,
+      linkstatic = 1,
+      linkopts = clinkopts + platform_linkopts,
+      visibility = ["//visibility:private"],
+  )
+
+#   if objc:
+#       cgo_lib_kwargs.update(objc)
+#       native.objc_library(**cgo_lib_kwargs)
+#       # Enable objc for cc_binary
+#       copts += ["-x", "objective-c"]
+#       if objc.get("enable_modules") == 1:
+#           copts += ["-fmodules"]
+#   else:
+#       cgo_lib_kwargs.update({
+#           "linkstatic": 1,
+#           "linkopts": clinkopts + platform_linkopts,
+#       })
 
   # Create a loadable object with no undefined references. cgo reads this
   # when it generates _cgo_import.go.
