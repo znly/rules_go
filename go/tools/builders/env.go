@@ -31,6 +31,17 @@ var (
 	// goReleaseTags holds the release tags with which Go was built as a map.
 	// This is useful for detecting mininum required Go versions.
 	goReleaseTags = map[string]bool{}
+
+	cgoAbsoluteArgs = map[string]bool{
+		"-I":             true,
+		"-L":             true,
+		"-isysroot":      true,
+		"-isystem":       true,
+		"-iquote":        true,
+		"-include":       true,
+		"-gcc-toolchain": true,
+		"--sysroot":      true,
+	}
 )
 
 // GoEnv holds the go environment as specified on the command line.
@@ -71,6 +82,32 @@ func abs(path string) string {
 	} else {
 		return abs
 	}
+}
+
+func absoluteCgoFlags(flags []string) []string {
+	ret := make([]string, len(flags))
+	for i := 0; i < len(flags); i++ {
+		f := flags[i]
+		ret[i] = f
+		// simple case, exact match
+		if cgoAbsoluteArgs[f] {
+			ret[i+1] = abs(flags[i+1])
+			i++ // skip next
+			continue
+		}
+		// slower, need to check for prefix
+		for wf, _ := range cgoAbsoluteArgs {
+			if strings.HasPrefix(f, wf) {
+				// check for in the form of "-key=value"
+				if len(f) > len(wf) && f[len(wf):len(wf)+1] == "=" {
+					wf += "="
+				}
+				ret[i] = wf[:len(wf)] + abs(flags[i][len(wf):])
+				break
+			}
+		}
+	}
+	return ret
 }
 
 func envUpdate(oldEnv, newEnv []string) []string {
@@ -151,7 +188,7 @@ func (env *GoEnv) env() []string {
 		)
 	}
 	if len(env.cpp_flags) > 0 {
-		v := strings.Join(env.cpp_flags, " ")
+		v := strings.Join(absoluteCgoFlags(env.cpp_flags), " ")
 		result = append(result,
 			fmt.Sprintf("CGO_CFLAGS=%s", v),
 			fmt.Sprintf("CGO_CPPFLAGS=%s", v),
@@ -160,7 +197,7 @@ func (env *GoEnv) env() []string {
 	}
 	if len(env.ld_flags) > 0 {
 		result = append(result,
-			fmt.Sprintf("CGO_LDFLAGS=%s", strings.Join(env.ld_flags, " ")),
+			fmt.Sprintf("CGO_LDFLAGS=%s", strings.Join(absoluteCgoFlags(env.ld_flags), " ")),
 		)
 	}
 	return result
