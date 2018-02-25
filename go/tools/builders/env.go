@@ -23,6 +23,25 @@ import (
 	"strings"
 )
 
+var (
+	cgoArgsPrefixed = []string{
+		"-I",
+		"-L",
+		"--include=",
+		"--sysroot=",
+	}
+	cgoArgsNext = map[string]bool{
+		"-I":             true,
+		"-L":             true,
+		"-isysroot":      true,
+		"-isystem":       true,
+		"-iquote":        true,
+		"-include":       true,
+		"--sysroot":      true,
+		"-gcc-toolchain": true,
+	}
+)
+
 // GoEnv holds the go environment as specified on the command line.
 type GoEnv struct {
 	// Go is the path to the go executable.
@@ -49,6 +68,25 @@ func abs(path string) string {
 	} else {
 		return abs
 	}
+}
+
+func absoluteCgoFlags(flags []string) []string {
+	ret := flags[:]
+	for i := 0; i < len(flags); i++ {
+		f := flags[i]
+		if cgoArgsNext[f] {
+			ret[i+1] = abs(flags[i+1])
+			i++ // skip next
+			continue
+		}
+		for _, wf := range cgoArgsPrefixed {
+			if strings.HasPrefix(f, wf) {
+				ret[i] = wf[:len(wf)] + abs(flags[i][len(wf):])
+				continue
+			}
+		}
+	}
+	return ret
 }
 
 func envUpdate(oldEnv, newEnv []string) []string {
@@ -140,7 +178,7 @@ func (env *GoEnv) env() []string {
 		"CGO_LDFLAGS":  env.ld_flags,
 	}
 	for envVar, flags := range cgoFlags {
-		v := strings.Join(flags, " ")
+		v := strings.Join(absoluteCgoFlags(flags), " ")
 		result = append(result, envVar+"="+v)
 	}
 	return result
