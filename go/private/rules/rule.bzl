@@ -34,8 +34,6 @@ def go_rule(implementation, attrs={}, toolchains=[], bootstrap=False, **kwargs):
   if not bootstrap:
     attrs["_stdlib"] = attr.label(default = Label("@io_bazel_rules_go//:stdlib"), aspects = aspects)
     attrs["_builders"] = attr.label(default = Label("@io_bazel_rules_go//:builders"))
-  else:
-    attrs["_builders"] = attr.label(default = None)
 
   if "goos" not in attrs:
     attrs["goos"] = attr.string(
