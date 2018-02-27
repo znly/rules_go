@@ -1,26 +1,23 @@
 load("//proto:compiler.bzl", "go_proto_compiler")
 load("//proto:gogo.bzl", "gogo_special_proto")
+load("//proto:well_known_types.bzl", "gen_well_known_types", "GOGO_WELL_KNOWN_TYPE_REMAPS")
 
-WELL_KNOWN_PROTOS = [
-    "any",
-    "duration",
-    "empty",
-    "struct",
-    "timestamp",
-    "wrappers",
-]
+WELL_KNOWN_TYPES = gen_well_known_types()
 
-GOLANG_PTYPES = [
-    "@com_github_golang_protobuf//ptypes/{}:go_default_library".format(lib)
-    for lib in WELL_KNOWN_PROTOS
-]
+go_proto_compiler(
+    name = "go_proto_bootstrap",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_golang_protobuf//proto:go_default_library",
+    ],
+)
 
 go_proto_compiler(
     name = "go_proto",
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_golang_protobuf//proto:go_default_library",
-    ] + GOLANG_PTYPES,
+    ] + WELL_KNOWN_TYPES,
 )
 
 go_proto_compiler(
@@ -31,7 +28,7 @@ go_proto_compiler(
         "@com_github_golang_protobuf//proto:go_default_library",
         "@org_golang_google_grpc//:go_default_library",
         "@org_golang_x_net//context:go_default_library",
-    ] + GOLANG_PTYPES,
+    ] + WELL_KNOWN_TYPES,
 )
 
 go_proto_compiler(
@@ -56,11 +53,6 @@ GOGO_VARIANTS = [
     "gostring",
 ]
 
-GOGO_WELL_KNOWN_TYPE_REMAPS = [
-    "Mgoogle/protobuf/{}.proto=github.com/gogo/protobuf/types".format(t)
-    for t in WELL_KNOWN_PROTOS + ["field_mask"]
-]
-
 [go_proto_compiler(
     name = variant + "_proto",
     options = GOGO_WELL_KNOWN_TYPE_REMAPS,
@@ -71,7 +63,7 @@ GOGO_WELL_KNOWN_TYPE_REMAPS = [
         "@com_github_gogo_protobuf//proto:go_default_library",
         "@com_github_gogo_protobuf//sortkeys:go_default_library",
         "@com_github_gogo_protobuf//types:go_default_library",
-    ] + GOLANG_PTYPES,
+    ] + WELL_KNOWN_TYPES,
 ) for variant in GOGO_VARIANTS]
 
 [go_proto_compiler(
@@ -86,5 +78,5 @@ GOGO_WELL_KNOWN_TYPE_REMAPS = [
         "@com_github_gogo_protobuf//types:go_default_library",
         "@org_golang_google_grpc//:go_default_library",
         "@org_golang_x_net//context:go_default_library",
-    ] + GOLANG_PTYPES,
+    ] + WELL_KNOWN_TYPES,
 ) for variant in GOGO_VARIANTS]
