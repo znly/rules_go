@@ -78,7 +78,7 @@ def _c_filter_options(options, blacklist):
   return [opt for opt in options
         if not any([opt.startswith(prefix) for prefix in blacklist])]
 
-def _select_archive(files):
+def _select_archives(files):
   """Selects a single archive from a list of files produced by a
   static cc_library.
 
@@ -86,12 +86,15 @@ def _select_archive(files):
   order isn't guaranteed, so we can't simply pick the first one.
   """
   # list of file extensions in descending order or preference.
+  outs = []
   exts = [".pic.lo", ".lo", ".a"]
   for ext in exts:
     for f in files:
       if f.basename.endswith(ext):
-        return f
-  fail("cc_library did not produce any files")
+        outs.append(f)
+  if not outs:
+    fail("cc_library did not produce any files")
+  return outs
 
 def _cgo_codegen_impl(ctx):
   go = go_context(ctx)
@@ -254,7 +257,7 @@ def _not_pure(ctx, mode):
 def _cgo_resolve_source(go, attr, source, merge):
   library = source["library"]
   cgo_info = library.cgo_info
-  
+
   source["orig_srcs"] = cgo_info.orig_srcs
   source["runfiles"] = cgo_info.runfiles
   if source["mode"].pure:
@@ -266,7 +269,7 @@ def _cgo_resolve_source(go, attr, source, merge):
     source["cover"] = cgo_info.transformed_go_srcs
     source["cgo_deps"] = cgo_info.cgo_deps
     source["cgo_exports"] = cgo_info.cgo_exports
-    source["cgo_archive"] = cgo_info.cgo_archive
+    source["cgo_archives"] = cgo_info.cgo_archives
 
 def _cgo_collect_info_impl(ctx):
   go = go_context(ctx)
@@ -283,7 +286,7 @@ def _cgo_collect_info_impl(ctx):
           gen_go_srcs = codegen.gen_go + import_files,
           cgo_deps = codegen.deps,
           cgo_exports = codegen.exports,
-          cgo_archive = _select_archive(ctx.files.lib),
+          cgo_archives = _select_archives(ctx.files.libs),
           runfiles = runfiles,
       ),
   )
@@ -305,7 +308,7 @@ _cgo_collect_info = go_rule(
             mandatory = True,
             providers = [_CgoCodegen],
         ),
-        "lib": attr.label(
+        "libs": attr.label_list(
             mandatory = True,
             providers = ["cc"],
         ),
@@ -408,7 +411,7 @@ def setup_cgo_library(name, srcs, cdeps, copts, clinkopts):
       name = cgo_embed_name,
       srcs = srcs,
       codegen = cgo_codegen_name,
-      lib = cgo_lib_name,
+      libs = [cgo_c_lib_name],
       cgo_import = cgo_import_name,
       visibility = ["//visibility:private"],
   )

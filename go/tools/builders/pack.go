@@ -43,7 +43,8 @@ func run(args []string) error {
 	outArchive := flags.String("out", "", "Path to output archive")
 	objects := multiFlag{}
 	flags.Var(&objects, "obj", "Object to append (may be repeated)")
-	archive := flags.String("arc", "", "Archive to append (at most one)")
+	archives := multiFlag{}
+	flags.Var(&archives, "arc", "Archives to append")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
@@ -55,8 +56,9 @@ func run(args []string) error {
 		return err
 	}
 
-	if *archive != "" {
-		archiveObjects, err := extractFiles(*archive)
+	names := map[string]struct{}{}
+	for _, archive := range archives {
+		archiveObjects, err := extractFiles(archive, names)
 		if err != nil {
 			return err
 		}
@@ -97,7 +99,7 @@ const (
 	entryLength = 60
 )
 
-func extractFiles(archive string) (files []string, err error) {
+func extractFiles(archive string, names map[string]struct{}) (files []string, err error) {
 	f, err := os.Open(archive)
 	if err != nil {
 		return nil, err
@@ -111,7 +113,6 @@ func extractFiles(archive string) (files []string, err error) {
 	}
 
 	var nameData []byte
-	names := make(map[string]bool)
 	for {
 		name, size, err := readMetadata(r, &nameData)
 		if err == io.EOF {
@@ -127,7 +128,7 @@ func extractFiles(archive string) (files []string, err error) {
 			continue
 		}
 		name = simpleName(name, names)
-		names[name] = true
+		names[name] = struct{}{}
 		if err := extractFile(r, name, size); err != nil {
 			return nil, err
 		}
@@ -267,8 +268,8 @@ func isObjectFile(name string) bool {
 // simpleName returns a file name which is at most 15 characters
 // and doesn't conflict with other names. If it is not possible to choose
 // such a name, simpleName will truncate the given name to 15 characters
-func simpleName(name string, names map[string]bool) string {
-	if len(name) < 16 && !names[name] {
+func simpleName(name string, names map[string]struct{}) string {
+	if _, ok := names[name]; !ok && len(name) < 16 {
 		return name
 	}
 	var stem, ext string
@@ -285,7 +286,7 @@ func simpleName(name string, names map[string]bool) string {
 			stemLen = len(stem)
 		}
 		candidate := stem[:stemLen] + ns + ext
-		if !names[candidate] {
+		if _, ok := names[candidate]; !ok {
 			return candidate
 		}
 	}
