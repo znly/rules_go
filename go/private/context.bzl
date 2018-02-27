@@ -127,10 +127,10 @@ def _merge_embed(source, embed):
   source["runfiles"] = source["runfiles"].merge(s.runfiles)
   source["cgo_deps"] = source["cgo_deps"] + s.cgo_deps
   source["cgo_exports"] = source["cgo_exports"] + s.cgo_exports
-  if s.cgo_archive:
-    if source["cgo_archive"]:
-      fail("multiple libraries with cgo_archive embedded")
-    source["cgo_archive"] = s.cgo_archive
+  if s.cgo_archives:
+    if source["cgo_archives"]:
+      fail("multiple libraries with cgo_archives embedded")
+    source["cgo_archives"] = s.cgo_archives
 
 def _library_to_source(go, attr, library, coverage_instrumented):
   #TODO: stop collapsing a depset in this line...
@@ -145,7 +145,7 @@ def _library_to_source(go, attr, library, coverage_instrumented):
       "deps" : getattr(attr, "deps", []),
       "gc_goopts" : getattr(attr, "gc_goopts", []),
       "runfiles" : go._ctx.runfiles(collect_data = True),
-      "cgo_archive" : None,
+      "cgo_archives" : [],
       "cgo_deps" : [],
       "cgo_exports" : [],
   }

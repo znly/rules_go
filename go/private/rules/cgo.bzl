@@ -78,7 +78,7 @@ def _c_filter_options(options, blacklist):
   return [opt for opt in options
         if not any([opt.startswith(prefix) for prefix in blacklist])]
 
-def _select_archive(files):
+def _select_archives(files):
   """Selects a single archive from a list of files produced by a
   static cc_library.
 
@@ -86,12 +86,15 @@ def _select_archive(files):
   order isn't guaranteed, so we can't simply pick the first one.
   """
   # list of file extensions in descending order or preference.
+  outs = []
   exts = [".pic.lo", ".lo", ".a"]
   for ext in exts:
     for f in files:
       if f.basename.endswith(ext):
-        return f
-  fail("cc_library did not produce any files")
+        outs.append(f)
+  if not outs:
+    fail("cc_library did not produce any files")
+  return outs
 
 def _cgo_codegen_impl(ctx):
   go = go_context(ctx)
@@ -259,7 +262,7 @@ def _cgo_library_to_source(go, attr, source, merge):
   source["srcs"] = library.gen_go_srcs + source["srcs"]
   source["cgo_deps"] = source["cgo_deps"] + library.cgo_deps
   source["cgo_exports"] = source["cgo_exports"] + library.cgo_exports
-  source["cgo_archive"] = library.cgo_archive
+  source["cgo_archives"] = library.cgo_archives
   source["runfiles"] = source["runfiles"].merge(attr.codegen.data_runfiles)
 
 def _cgo_collect_info_impl(ctx):
@@ -274,7 +277,7 @@ def _cgo_collect_info_impl(ctx):
       gen_go_srcs = ctx.files.gen_go_srcs,
       cgo_deps = ctx.attr.codegen[_CgoCodegen].deps,
       cgo_exports = ctx.attr.codegen[_CgoCodegen].exports,
-      cgo_archive = _select_archive(ctx.files.lib),
+      cgo_archives = _select_archives(ctx.files.libs),
   )
   source = go.library_to_source(go, ctx.attr, library, ctx.coverage_instrumented())
 
@@ -298,7 +301,7 @@ _cgo_collect_info = go_rule(
             mandatory = True,
             allow_files = [".go"],
         ),
-        "lib": attr.label(
+        "libs": attr.label_list(
             mandatory = True,
             providers = ["cc"],
         ),
@@ -414,7 +417,7 @@ def setup_cgo_library(name, srcs, cdeps, copts, clinkopts):
           select_go_files,
           cgo_import_name,
       ],
-      lib = cgo_lib_name,
+      libs = [cgo_c_lib_name],
       visibility = ["//visibility:private"],
   )
 
