@@ -46,6 +46,19 @@ INFERRED_PATH = "inferred"
 
 EXPORT_PATH = "export"
 
+_COMPILER_OPTIONS_BLACKLIST = {
+  "-fcolor-diagnostics": None,
+  "-Wall": None,
+  "-g0": None, # symbols are needed by Go, so keep them
+}
+
+_LINKER_OPTIONS_BLACKLIST = {
+  "-Wl,--gc-sections": None
+}
+
+def _filter_options(options, blacklist):
+  return [option for option in options if option not in blacklist]
+
 def _child_name(go, path, ext, name):
   childname = mode_string(go.mode) + "/"
   childname += name if name else go._ctx.label.name
@@ -74,6 +87,9 @@ def _new_args(go):
       "-goarch", go.mode.goarch,
       "-cgo=" + ("0" if go.mode.pure else "1"),
   ])
+  if len(go.tags) > 0:
+    args.add("-tags")
+    args.add(go.tags, join_with = ",")
   if go.cgo_tools:
     args.add([
       "-compiler_path", go.cgo_tools.compiler_path,
@@ -231,6 +247,8 @@ def go_context(ctx, attr=None):
       pathtype = pathtype,
       cgo_tools = context_data.cgo_tools,
       builders = builders,
+      env = context_data.env,
+      tags = context_data.tags,
       # Action generators
       archive = toolchain.actions.archive,
       asm = toolchain.actions.asm,
@@ -254,19 +272,17 @@ def go_context(ctx, attr=None):
 def _go_context_data(ctx):
   cpp = ctx.fragments.cpp
   features = ctx.features
-  raw_compiler_options = cpp.compiler_options(features)
-  raw_linker_options = cpp.mostly_static_link_options(features, False)
-  options = (raw_compiler_options +
-      cpp.unfiltered_compiler_options(features) +
-      cpp.link_options +
-      raw_linker_options)
-  compiler_options = [o for o in raw_compiler_options if not o in [
-    "-fcolor-diagnostics",
-    "-Wall",
-  ]]
-  linker_options = [o for o in raw_linker_options if not o in [
-    "-Wl,--gc-sections",
-  ]]
+  compiler_options = _filter_options(
+    cpp.compiler_options(features) + cpp.unfiltered_compiler_options(features),
+    _COMPILER_OPTIONS_BLACKLIST)
+  linker_options = _filter_options(
+    cpp.link_options + cpp.mostly_static_link_options(features, False),
+    _LINKER_OPTIONS_BLACKLIST)
+
+  env = {}
+  tags = []
+  if "gotags" in ctx.var:
+    tags = ctx.var["gotags"].split(",")
   compiler_path, _ = cpp.ld_executable.rsplit("/", 1)
   return struct(
       strip = ctx.attr.strip,
@@ -274,13 +290,15 @@ def _go_context_data(ctx):
       package_list = ctx.file._package_list,
       sdk_files = ctx.files._sdk_files,
       sdk_tools = ctx.files._sdk_tools,
+      tags = tags,
+      env = env,
       cgo_tools = struct(
           compiler_path = compiler_path,
           compiler_executable = cpp.compiler_executable,
           ld_executable = cpp.ld_executable,
           compiler_options = compiler_options,
           linker_options = linker_options,
-          options = options,
+          options = compiler_options + linker_options,
           c_options = cpp.c_options,
       ),
   )

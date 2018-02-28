@@ -86,7 +86,7 @@ def _cgo_codegen_impl(ctx):
   if not go.cgo_tools:
     fail("Go toolchain does not support cgo")
   linkopts = ctx.attr.linkopts[:]
-  copts = go.cgo_tools.c_options + ctx.attr.copts
+  copts = go.cgo_tools.c_options + go.cgo_tools.compiler_options + ctx.attr.copts
   deps = depset([], order="topological")
   cgo_export_h = go.declare_file(go, path="_cgo_export.h")
   cgo_export_c = go.declare_file(go, path="_cgo_export.c")
@@ -143,20 +143,20 @@ def _cgo_codegen_impl(ctx):
         linkopts.append(lib.path)
     linkopts.extend(d.cc.link_flags)
 
+  args.add(linkopts, before_each="-ld_flag")
+
   # The first -- below is to stop the cgo from processing args, the
   # second is an actual arg to forward to the underlying go tool
   args.add(["--", "--"])
   args.add(copts)
   ctx.actions.run(
-      inputs = inputs,
+      inputs = inputs + go.crosstool,
       outputs = c_outs + go_outs + [cgo_main],
       mnemonic = "CGoCodeGen",
       progress_message = "CGoCodeGen %s" % ctx.label,
       executable = go.builders.cgo,
       arguments = [args],
-      env = {
-          "CGO_LDFLAGS": " ".join(linkopts),
-      },
+      env = go.env,
   )
 
   return [
@@ -352,7 +352,7 @@ def setup_cgo_library(name, srcs, cdeps, copts, clinkopts):
   # into binaries that depend on this cgo_library. It will also be used
   # in _cgo_.o.
   platform_copts = select({
-      "@io_bazel_rules_go//go/platform:darwin_amd64": [],
+      "@io_bazel_rules_go//go/platform:darwin": [],
       "@io_bazel_rules_go//go/platform:windows_amd64": ["-mthreads"],
       "//conditions:default": ["-pthread"],
   })

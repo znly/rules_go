@@ -24,13 +24,14 @@ import (
 )
 
 func install_stdlib(goenv *GoEnv, target string, args []string) error {
+	if goenv.tags != "" {
+		args = append(args, "-tags", goenv.tags)
+	}
 	args = append(args, target)
-	env := os.Environ()
-	env = append(env, goenv.Env()...)
 	cmd := exec.Command(goenv.Go, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	cmd.Env = env
+	cmd.Env = goenv.Env()
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("error running go install %s: %v", target, err)
 	}
