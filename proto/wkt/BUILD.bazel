@@ -1,0 +1,3 @@
+load("//proto/wkt:well_known_types.bzl", "gen_well_known_types")
+
+gen_well_known_types()
