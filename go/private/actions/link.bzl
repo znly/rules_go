@@ -49,6 +49,8 @@ def emit_link(go,
 
   gc_linkopts, extldflags = _extract_extldflags(gc_linkopts, extldflags)
 
+  args = go.args(go)
+
   # Add in any mode specific behaviours
   link_external = False
   if go.mode.race:
@@ -58,14 +60,12 @@ def emit_link(go,
   if go.mode.static:
     extldflags.append("-static")
   if go.mode.link != LINKMODE_NORMAL:
-    gc_linkopts.extend(["-buildmode", go.mode.link])
+    args.add(["-buildmode", go.mode.link])
     link_external = True
   if link_external:
     gc_linkopts.extend(["-linkmode", "external"])
 
-  args = go.args(go)
   args.add(["-L", "."])
-
   args.add(archive.searchpaths, before_each="-L")
 
   for d in as_iterable(archive.cgo_deps):
@@ -94,8 +94,9 @@ def emit_link(go,
     if linkstamp:
       args.add(["-linkstamp", linkstamp])
 
+  args.add(["-out", executable])
+
   args.add(["--"])
-  args.add(["-o", executable])
   args.add(gc_linkopts)
   args.add(go.toolchain.flags.link)
   if go.mode.strip:
