@@ -48,8 +48,13 @@ Please do not rely on it for production use, but feel free to use it and file is
   #TODO: non specific mode?
   # First gather all the library rules
   golibs = depset()
+  archives_runfiles = {}
   for dep in ctx.attr.deps:
-    golibs += get_archive(dep).transitive
+    archive = get_archive(dep)
+    golibs += archive.transitive
+    importpath = archive.source.library.importpath
+    if importpath:
+      archives_runfiles[importpath] = archive.source.runfiles
 
   # Now scan them for sources
   seen_libs = {}
@@ -75,7 +80,10 @@ Found {} in
     seen_libs[golib.importpath] = golib
     package_files = []
     prefix = "src/" + golib.importpath + "/"
-    for src in golib.srcs:
+    golib_files = golib.srcs
+    if golib.importpath in archives_runfiles:
+      golib_files = list(golib.srcs) + as_iterable(archives_runfiles[golib.importpath].files)
+    for src in golib_files:
       outpath = prefix + src.basename
       if outpath in seen_paths:
         # If we see the same path twice, it's a fatal error
