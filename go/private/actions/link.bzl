@@ -94,6 +94,7 @@ def emit_link(go,
     if linkstamp:
       args.add(["-linkstamp", linkstamp])
 
+  args.add(extldflags, before_each = "-ld_flag")
   args.add(["-out", executable])
 
   args.add(["--"])
@@ -105,11 +106,9 @@ def emit_link(go,
   if ld:
     args.add([
         "-extld", ld,
-        "-extldflags", " ".join(extldflags),
     ])
 
   args.add(archive.data.file)
-
   go.actions.run(
       inputs = sets.union(archive.libs, archive.cgo_deps,
                 go.crosstool, stamp_inputs, go.stdlib.files),

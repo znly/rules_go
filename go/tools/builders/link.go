@@ -112,6 +112,8 @@ func run(args []string) error {
 	}
 	goargs = append(goargs, "-o", *outFile)
 
+	goargs = append(goargs, "-extldflags", strings.Join(goenv.ld_flags, " "))
+
 	// add in the unprocess pass through options
 	goargs = append(goargs, goopts...)
 	cmd := exec.Command(goenv.Go, goargs...)
