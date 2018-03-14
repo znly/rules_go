@@ -21,6 +21,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"strings"
 )
 
 func install_stdlib(goenv *GoEnv, target string, args []string) error {
@@ -44,6 +45,7 @@ func run(args []string) error {
 	goenv := envFlags(flags)
 	out := flags.String("out", "", "Path to output go root")
 	race := flags.Bool("race", false, "Build in race mode")
+	shared := flags.Bool("shared", false, "Build in shared mode")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
@@ -59,10 +61,23 @@ func run(args []string) error {
 	// Now switch to the newly created GOROOT
 	goenv.rootPath = output
 	// Run the commands needed to build the std library in the right mode
-	installArgs := []string{"install", "-asmflags", "-trimpath " + abs(".")}
+	installArgs := []string{"install"}
+	gcflags := []string{}
+	ldflags := []string{"-trimpath", abs(".")}
+	asmflags := []string{"-trimpath", abs(".")}
 	if *race {
 		installArgs = append(installArgs, "-race")
 	}
+	if *shared {
+		gcflags = append(gcflags, "-shared")
+		ldflags = append(ldflags, "-shared")
+		asmflags = append(asmflags, "-shared")
+	}
+
+	installArgs = append(installArgs, "-gcflags", strings.Join(gcflags, " "))
+	installArgs = append(installArgs, "-ldflags", strings.Join(ldflags, " "))
+	installArgs = append(installArgs, "-asmflags", strings.Join(asmflags, " "))
+
 	if err := install_stdlib(goenv, "std", installArgs); err != nil {
 		return err
 	}
