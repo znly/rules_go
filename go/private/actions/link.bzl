@@ -62,6 +62,7 @@ def emit_link(go,
   if go.mode.link != LINKMODE_NORMAL:
     args.add(["-buildmode", go.mode.link])
     link_external = True
+
   if link_external:
     gc_linkopts.extend(["-linkmode", "external"])
 

@@ -104,6 +104,16 @@ def _go_binary_c_archive_shared(name, kwargs):
     includes = ["."],
     alwayslink = 1,
     linkstatic = 1,
+    copts = select({
+        "@io_bazel_rules_go//go/platform:darwin": [],
+        "@io_bazel_rules_go//go/platform:windows_amd64": ["-mthreads"],
+        "//conditions:default": ["-pthread"],
+    }),
+    linkopts = select({
+        "@io_bazel_rules_go//go/platform:darwin": [],
+        "@io_bazel_rules_go//go/platform:windows_amd64": ["-mthreads"],
+        "//conditions:default": ["-pthread"],
+    }),
     visibility = ["//visibility:public"],
   )
 
