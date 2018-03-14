@@ -16,6 +16,9 @@ load(
     "@io_bazel_rules_go//go/private:common.bzl",
     "sets",
 )
+load("@io_bazel_rules_go//go/private:mode.bzl",
+    "LINKMODE_C_SHARED",
+)
 
 def emit_asm(go,
     source = None,
@@ -32,6 +35,8 @@ def emit_asm(go,
 
   asm_args = go.args(go)
   asm_args.add(["-o", out_obj, "-trimpath", "."])
+  if go.mode.link == LINKMODE_C_SHARED:
+    asm_args.add("-shared")
   asm_args.add(includes, before_each="-I")
   asm_args.add(source.path)
   go.actions.run(

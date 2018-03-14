@@ -45,7 +45,6 @@ func run(args []string) error {
 	goenv := envFlags(flags)
 	out := flags.String("out", "", "Path to output go root")
 	race := flags.Bool("race", false, "Build in race mode")
-	shared := flags.Bool("shared", false, "Build in shared mode")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
@@ -68,7 +67,7 @@ func run(args []string) error {
 	if *race {
 		installArgs = append(installArgs, "-race")
 	}
-	if *shared {
+	if goenv.shared {
 		gcflags = append(gcflags, "-shared")
 		ldflags = append(ldflags, "-shared")
 		asmflags = append(asmflags, "-shared")

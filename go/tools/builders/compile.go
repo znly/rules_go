@@ -85,6 +85,9 @@ func run(args []string) error {
 	}
 
 	goargs := []string{"tool", "compile"}
+	if goenv.shared {
+		goargs = append(goargs, "-shared")
+	}
 	goargs = append(goargs, "-trimpath", abs(*trimpath))
 	for _, path := range search {
 		goargs = append(goargs, "-I", abs(path))
