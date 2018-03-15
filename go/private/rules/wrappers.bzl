@@ -73,7 +73,7 @@ def _go_binary_c_archive_shared(name, kwargs):
   if linkmode not in [LINKMODE_C_SHARED, LINKMODE_C_ARCHIVE]:
     return
   cgo_exports = name + ".cgo_exports"
-  c_hdrs = name + ".c_hdrs"
+  c_hdrs = name + ".c_hdrs" # will also be used as a container directory
   cc_import_name = name + ".cc_import"
   cc_library_name = name + ".cc"
   native.filegroup(
@@ -84,8 +84,8 @@ def _go_binary_c_archive_shared(name, kwargs):
   native.genrule(
     name = c_hdrs,
     srcs = [cgo_exports],
-    outs = [name + ".h"],
-    cmd = "cat $(SRCS) > $(@)",
+    outs = ["%s/%s.h" % (c_hdrs, name)],
+    cmd = "mkdir -p $(@D) && cat $(SRCS) > $(@)",
   )
   cc_import_kwargs = {}
   if linkmode == LINKMODE_C_SHARED:
@@ -101,7 +101,7 @@ def _go_binary_c_archive_shared(name, kwargs):
     name = cc_library_name,
     hdrs = [c_hdrs],
     deps = [cc_import_name],
-    includes = ["."],
+    includes = [c_hdrs],
     alwayslink = 1,
     linkstatic = 1,
     copts = select({
