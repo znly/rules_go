@@ -23,6 +23,16 @@ import (
 	"strings"
 )
 
+var (
+	// goBuildTags holds the build tags with which Go was built as a map.
+	// This is useful for detecting the presence of a particular build tag.
+	goBuildTags = map[string]bool{}
+
+	// goReleaseTags holds the release tags with which Go was built as a map.
+	// This is useful for detecting mininum required Go versions.
+	goReleaseTags = map[string]bool{}
+)
+
 // GoEnv holds the go environment as specified on the command line.
 type GoEnv struct {
 	// Go is the path to the go executable.
@@ -40,6 +50,15 @@ type GoEnv struct {
 	cpp_flags    multiFlag
 	ld_flags     multiFlag
 	shared       bool
+}
+
+func init() {
+	for _, tag := range build.Default.BuildTags {
+		goBuildTags[tag] = true
+	}
+	for _, tag := range build.Default.ReleaseTags {
+		goReleaseTags[tag] = true
+	}
 }
 
 // abs returns the absolute representation of path. Some tools/APIs require
