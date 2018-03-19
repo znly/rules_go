@@ -24,6 +24,10 @@ load(
     "@io_bazel_rules_go//go/private:rules/rule.bzl",
     "go_rule",
 )
+load(
+    "@io_bazel_rules_go//go/private:mode.bzl",
+    "LINKMODE_C_SHARED",
+)
 
 def _stdlib_library_to_source(go, attr, source, merge):
   pkg = go.declare_directory(go, "pkg")
@@ -33,6 +37,8 @@ def _stdlib_library_to_source(go, attr, source, merge):
   args.add(["-out", root_file.dirname])
   if go.mode.race:
     args.add("-race")
+  if go.mode.link == LINKMODE_C_SHARED:
+    args.add("-shared")
   go.actions.write(root_file, "")
   go.actions.run(
       inputs = go.sdk_files + go.sdk_tools + go.crosstool + [go.package_list, root_file],

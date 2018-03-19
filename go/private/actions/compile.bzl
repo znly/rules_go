@@ -18,6 +18,7 @@ load(
 )
 load("@io_bazel_rules_go//go/private:mode.bzl",
     "LINKMODE_PLUGIN",
+    "LINKMODE_C_SHARED",
 )
 
 def _importpath(l):
@@ -50,6 +51,8 @@ def emit_compile(go,
     gc_goopts = gc_goopts + ["-race"]
   if go.mode.msan:
     gc_goopts = gc_goopts + ["-msan"]
+  if go.mode.link == LINKMODE_C_SHARED:
+    gc_goopts = gc_goopts + ["-shared"]
 
   #TODO: Check if we really need this expand make variables in here
   #TODO: If we really do then it needs to be moved all the way back out to the rule

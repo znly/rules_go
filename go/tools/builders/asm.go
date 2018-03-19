@@ -53,6 +53,9 @@ func run(args []string) error {
 		source = os.DevNull
 	}
 	goargs := []string{"tool", "asm"}
+	if goenv.shared {
+		goargs = append(goargs, "-shared")
+	}
 	goargs = append(goargs, "-trimpath", abs(*trimpath), "-o", *output)
 	for _, path := range search {
 		goargs = append(goargs, "-I", abs(path))

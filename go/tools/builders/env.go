@@ -23,6 +23,16 @@ import (
 	"strings"
 )
 
+var (
+	// goBuildTags holds the build tags with which Go was built as a map.
+	// This is useful for detecting the presence of a particular build tag.
+	goBuildTags = map[string]bool{}
+
+	// goReleaseTags holds the release tags with which Go was built as a map.
+	// This is useful for detecting mininum required Go versions.
+	goReleaseTags = map[string]bool{}
+)
+
 // GoEnv holds the go environment as specified on the command line.
 type GoEnv struct {
 	// Go is the path to the go executable.
@@ -39,6 +49,16 @@ type GoEnv struct {
 	cc           string
 	cpp_flags    multiFlag
 	ld_flags     multiFlag
+	shared       bool
+}
+
+func init() {
+	for _, tag := range build.Default.BuildTags {
+		goBuildTags[tag] = true
+	}
+	for _, tag := range build.Default.ReleaseTags {
+		goReleaseTags[tag] = true
+	}
 }
 
 // abs returns the absolute representation of path. Some tools/APIs require
@@ -82,6 +102,7 @@ func envFlags(flags *flag.FlagSet) *GoEnv {
 	flags.StringVar(&env.goarch, "goarch", "", "The value for GOARCH.")
 	flags.BoolVar(&env.Verbose, "v", false, "Enables verbose debugging prints.")
 	flags.StringVar(&env.tags, "tags", "", "Only pass through files that match these tags.")
+	flags.BoolVar(&env.shared, "shared", false, "Build in shared mode")
 	flags.StringVar(&env.cc, "cc", "", "Sets the c compiler to use")
 	flags.Var(&env.cpp_flags, "cpp_flag", "An entry to add to the c compiler flags")
 	flags.Var(&env.ld_flags, "ld_flag", "An entry to add to the c linker flags")

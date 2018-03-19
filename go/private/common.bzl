@@ -130,6 +130,14 @@ def goos_to_extension(goos):
     return ".exe"
   return ""
 
+ARCHIVE_EXTENSION = ".a"
+
+def goos_to_shared_extension(goos):
+  return {
+    "windows": ".dll",
+    "darwin": ".dylib",
+  }.get(goos, ".so")
+
 MINIMUM_BAZEL_VERSION = "0.8.0"
 
 def as_list(v):

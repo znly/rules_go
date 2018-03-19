@@ -47,6 +47,8 @@ func run(args []string) error {
 	libPaths := multiFlag{}
 	flags := flag.NewFlagSet("link", flag.ExitOnError)
 	goenv := envFlags(flags)
+	outFile := flags.String("out", "", "Path to output file.")
+	buildmode := flags.String("buildmode", "", "Build mode used.")
 	flags.Var(&xstamps, "Xstamp", "A link xdef that may need stamping.")
 	flags.Var(&xdefs, "Xdef", "A link xdef that may need stamping.")
 	flags.Var(&libPaths, "L", "A library search path.")
@@ -105,6 +107,13 @@ func run(args []string) error {
 		}
 	}
 
+	if *buildmode != "" {
+		goargs = append(goargs, "-buildmode", *buildmode)
+	}
+	goargs = append(goargs, "-o", *outFile)
+
+	goargs = append(goargs, "-extldflags", strings.Join(goenv.ld_flags, " "))
+
 	// add in the unprocess pass through options
 	goargs = append(goargs, goopts...)
 	cmd := exec.Command(goenv.Go, goargs...)
@@ -114,6 +123,13 @@ func run(args []string) error {
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("error running linker: %v", err)
 	}
+
+	if *buildmode == "c-archive" {
+		if err := stripArMetadata(*outFile); err != nil {
+			return fmt.Errorf("error stripping archive metadata: %v", err)
+		}
+	}
+
 	return nil
 }
 

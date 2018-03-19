@@ -12,6 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load(
+    "@io_bazel_rules_go//go/private:mode.bzl",
+    "LINKMODE_C_SHARED",
+    "LINKMODE_C_ARCHIVE",
+)
+load(
+    "@io_bazel_rules_go//go/private:common.bzl",
+    "ARCHIVE_EXTENSION",
+)
+
 def emit_binary(go,
     name="",
     source = None,
@@ -24,7 +34,13 @@ def emit_binary(go,
   if name == "": fail("name is a required parameter")
 
   archive = go.archive(go, source)
-  executable = go.declare_file(go, name=name, ext=go.exe_extension)
+  extension = go.exe_extension
+  if go.mode.link == LINKMODE_C_SHARED:
+    name = "lib" + name # shared libraries need a "lib" prefix in their name
+    extension = go.shared_extension
+  elif go.mode.link == LINKMODE_C_ARCHIVE:
+    extension = ARCHIVE_EXTENSION
+  executable = go.declare_file(go, name=name, ext=extension)
   go.link(go,
       archive=archive,
       executable=executable,
