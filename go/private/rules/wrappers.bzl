@@ -15,11 +15,10 @@
 load("@io_bazel_rules_go//go/private:rules/binary.bzl", "go_binary")
 load("@io_bazel_rules_go//go/private:rules/library.bzl", "go_library")
 load("@io_bazel_rules_go//go/private:rules/test.bzl", "go_test")
-load("@io_bazel_rules_go//go/private:rules/cgo.bzl", "setup_cgo_library")
 load(
-    "@io_bazel_rules_go//go/private:mode.bzl",
-    "LINKMODE_C_SHARED",
-    "LINKMODE_C_ARCHIVE",
+    "@io_bazel_rules_go//go/private:rules/cgo.bzl",
+    "setup_cgo_library",
+    "go_binary_c_archive_shared",
 )
 
 _CGO_ATTRS = {
@@ -66,56 +65,7 @@ def go_binary_macro(name, **kwargs):
   _deprecate_importpath(name, "go_binary", kwargs)
   _cgo(name, kwargs)
   go_binary(name = name, **kwargs)
-  _go_binary_c_archive_shared(name, kwargs)
-
-def _go_binary_c_archive_shared(name, kwargs):
-  linkmode = kwargs.get("linkmode")
-  if linkmode not in [LINKMODE_C_SHARED, LINKMODE_C_ARCHIVE]:
-    return
-  cgo_exports = name + ".cgo_exports"
-  c_hdrs = name + ".c_hdrs" # will also be used as a container directory
-  cc_import_name = name + ".cc_import"
-  cc_library_name = name + ".cc"
-  native.filegroup(
-    name = cgo_exports,
-    srcs = [name],
-    output_group = "cgo_exports",
-  )
-  native.genrule(
-    name = c_hdrs,
-    srcs = [cgo_exports],
-    outs = ["%s/%s.h" % (c_hdrs, name)],
-    cmd = "mkdir -p $(@D) && cat $(SRCS) > $(@)",
-  )
-  cc_import_kwargs = {}
-  if linkmode == LINKMODE_C_SHARED:
-    cc_import_kwargs["shared_library"] = name
-  elif linkmode == LINKMODE_C_ARCHIVE:
-    cc_import_kwargs["static_library"] = name
-  native.cc_import(
-    name = cc_import_name,
-    alwayslink = 1,
-    **cc_import_kwargs
-  )
-  native.cc_library(
-    name = cc_library_name,
-    hdrs = [c_hdrs],
-    deps = [cc_import_name],
-    includes = [c_hdrs],
-    alwayslink = 1,
-    linkstatic = 1,
-    copts = select({
-        "@io_bazel_rules_go//go/platform:darwin": [],
-        "@io_bazel_rules_go//go/platform:windows_amd64": ["-mthreads"],
-        "//conditions:default": ["-pthread"],
-    }),
-    linkopts = select({
-        "@io_bazel_rules_go//go/platform:darwin": [],
-        "@io_bazel_rules_go//go/platform:windows_amd64": ["-mthreads"],
-        "//conditions:default": ["-pthread"],
-    }),
-    visibility = ["//visibility:public"],
-  )
+  go_binary_c_archive_shared(name, kwargs)
 
 def go_test_macro(name, **kwargs):
   """See go/core.rst#go_test for full documentation."""

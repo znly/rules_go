@@ -34,6 +34,11 @@ load(
     "@io_bazel_rules_go//go/private:rules/rule.bzl",
     "go_rule",
 )
+load(
+    "@io_bazel_rules_go//go/private:mode.bzl",
+    "LINKMODE_C_SHARED",
+    "LINKMODE_C_ARCHIVE",
+)
 
 _CgoCodegen = provider()
 
@@ -61,6 +66,13 @@ def _mangle(src, stems):
     stem = next_stem
   stems[stem] = True
   return stem, ext
+
+
+_DEFAULT_PLATFORM_COPTS = select({
+    "@io_bazel_rules_go//go/platform:darwin": [],
+    "@io_bazel_rules_go//go/platform:windows_amd64": ["-mthreads"],
+    "//conditions:default": ["-pthread"],
+})
 
 def _c_filter_options(options, blacklist):
   return [opt for opt in options
@@ -351,11 +363,7 @@ def setup_cgo_library(name, srcs, cdeps, copts, clinkopts):
   # Compile C sources and generated files into a library. This will be linked
   # into binaries that depend on this cgo_library. It will also be used
   # in _cgo_.o.
-  platform_copts = select({
-      "@io_bazel_rules_go//go/platform:darwin": [],
-      "@io_bazel_rules_go//go/platform:windows_amd64": ["-mthreads"],
-      "//conditions:default": ["-pthread"],
-  })
+  platform_copts = _DEFAULT_PLATFORM_COPTS
   platform_linkopts = platform_copts
 
   cgo_lib_name = name + ".cgo_c_lib"
@@ -411,3 +419,49 @@ def setup_cgo_library(name, srcs, cdeps, copts, clinkopts):
   )
 
   return cgo_embed_name
+
+# Sets up the cc_ targets when a go_binary is built in either c-archive or
+# c-shared mode.
+def go_binary_c_archive_shared(name, kwargs):
+  linkmode = kwargs.get("linkmode")
+  if linkmode not in [LINKMODE_C_SHARED, LINKMODE_C_ARCHIVE]:
+    return
+  cgo_exports = name + ".cgo_exports"
+  c_hdrs = name + ".c_hdrs" # will also be used as a container directory
+  cc_import_name = name + ".cc_import"
+  cc_library_name = name + ".cc"
+  native.filegroup(
+    name = cgo_exports,
+    srcs = [name],
+    output_group = "cgo_exports",
+    visibility = ["//visibility:private"],
+  )
+  native.genrule(
+    name = c_hdrs,
+    srcs = [cgo_exports],
+    outs = ["%s/%s.h" % (c_hdrs, name)],
+    cmd = "mkdir -p $(@D) && cat $(SRCS) > $(@)",
+    visibility = ["//visibility:private"],
+  )
+  cc_import_kwargs = {}
+  if linkmode == LINKMODE_C_SHARED:
+    cc_import_kwargs["shared_library"] = name
+  elif linkmode == LINKMODE_C_ARCHIVE:
+    cc_import_kwargs["static_library"] = name
+  native.cc_import(
+    name = cc_import_name,
+    alwayslink = 1,
+    visibility = ["//visibility:private"],
+    **cc_import_kwargs
+  )
+  native.cc_library(
+    name = cc_library_name,
+    hdrs = [c_hdrs],
+    deps = [cc_import_name],
+    includes = [c_hdrs],
+    alwayslink = 1,
+    linkstatic = (linkmode == LINKMODE_C_ARCHIVE and 1 or 0),
+    copts = _DEFAULT_PLATFORM_COPTS,
+    linkopts = _DEFAULT_PLATFORM_COPTS,
+    visibility = ["//visibility:public"],
+  )
