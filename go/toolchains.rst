@@ -114,6 +114,8 @@ hidden attributes that it consumes.
 
 .. code:: bzl
 
+  load("@io_bazel_rules_go//go:def.bzl", "go_context", "go_rule")
+
   my_rule = go_rule(
       _my_rule_impl,
       attrs = {
@@ -126,8 +128,7 @@ And then in the rule body, you need to get the toolchain itself and use it's act
 .. code:: bzl
 
   def _my_rule_impl(ctx):
-    go_toolchain = ctx.toolchains["@io_bazel_rules_go//go:toolchain"]
-    srcs, vars = go_toolchain.actions.cover(ctx, go_toolchain, ctx.files.srcs)
+    go = go_context(ctx)
 
 
 Customizing
