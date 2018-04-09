@@ -32,10 +32,25 @@ load(
     "@io_bazel_rules_go//go/private:rules/rule.bzl",
     "go_rule",
 )
+load(
+    "@io_bazel_rules_go//go/private:rules/aspect.bzl",
+    "go_archive_aspect",
+)
+load(
+    "@io_bazel_rules_go//go/platform:list.bzl",
+    "GOOS",
+    "GOARCH",
+)
+load(
+    "@io_bazel_rules_go//go/private:mode.bzl",
+    "LINKMODE_NORMAL",
+    "LINKMODES",
+)
 
 def _go_path_impl(ctx):
   # Gather all archives. Note that there may be multiple packages with the same
   # importpath (e.g., multiple vendored libraries, internal tests).
+  go = go_context(ctx)
   direct_archives = []
   transitive_archives = []
   for dep in ctx.attr.deps:
@@ -51,11 +66,14 @@ def _go_path_impl(ctx):
     if importpath == "":
       continue  # synthetic archive or inferred location
     out_prefix = "src/" + pkgpath
+    pkg_out_prefix = "pkg/" + go.mode.goos + "_" + go.mode.goarch + "/"
     pkg = struct(
         importpath = importpath,
         dir = out_prefix,
+        pkgdir = pkg_out_prefix + pkgpath,
         srcs = as_list(archive.orig_srcs),
         data = as_list(archive.data_files),
+        file = archive.file,
     )
     if pkgpath in pkg_map:
       _merge_pkg(pkg_map[pkgpath], pkg)
@@ -72,6 +90,12 @@ def _go_path_impl(ctx):
           dst = pkg.dir + "/" + f.basename,
       ))
       inputs.append(f)
+    if ctx.attr.with_binaries:
+      manifest_entries.append(struct(
+          src = pkg.file.path,
+          dst = pkg.pkgdir + "." + pkg.file.extension,
+      ))
+      inputs.append(pkg.file)
   for f in ctx.files.data:
     manifest_entries.append(struct(
         src = f.path,
@@ -132,10 +156,13 @@ def _go_path_impl(ctx):
       ),
   ]
 
-go_path = rule(
+go_path = go_rule(
     _go_path_impl,
     attrs = {
-        "deps": attr.label_list(providers = [GoArchive]),
+        "deps": attr.label_list(
+            providers = [GoArchive],
+            aspects = [go_archive_aspect],
+        ),
         "data": attr.label_list(
             allow_files = True,
             cfg = "data",
@@ -148,6 +175,48 @@ go_path = rule(
                 "link",
             ],
         ),
+        "pure": attr.string(
+            values = [
+                "on",
+                "off",
+                "auto",
+            ],
+            default = "auto",
+        ),
+        "static": attr.string(
+            values = [
+                "on",
+                "off",
+                "auto",
+            ],
+            default = "auto",
+        ),
+        "race": attr.string(
+            values = [
+                "on",
+                "off",
+                "auto",
+            ],
+            default = "auto",
+        ),
+        "msan": attr.string(
+            values = [
+                "on",
+                "off",
+                "auto",
+            ],
+            default = "auto",
+        ),
+        "goos": attr.string(
+            values = GOOS.keys() + ["auto"],
+            default = "auto",
+        ),
+        "goarch": attr.string(
+            values = GOARCH.keys() + ["auto"],
+            default = "auto",
+        ),
+        "linkmode": attr.string(values=LINKMODES, default=LINKMODE_NORMAL),
+        "with_binaries": attr.bool(default = False),
         "_go_path": attr.label(
             default = "@io_bazel_rules_go//go/tools/builders:go_path",
             executable = True,
@@ -179,5 +248,3 @@ def _merge_pkg(x, y):
   x_data = {f.path: None for f in x.data}
   x.srcs.extend([f for f in y.srcs if f.path not in x_srcs])
   x.data.extend([f for f in y.data if f.path not in x_srcs])
-
-  
