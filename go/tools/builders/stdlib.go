@@ -43,6 +43,7 @@ func run(args []string) error {
 	// process the args
 	flags := flag.NewFlagSet("stdlib", flag.ExitOnError)
 	goenv := envFlags(flags)
+	buildid := flags.String("buildid", "", "Path to buildid tool")
 	out := flags.String("out", "", "Path to output go root")
 	race := flags.Bool("race", false, "Build in race mode")
 	if err := flags.Parse(args); err != nil {
@@ -60,7 +61,7 @@ func run(args []string) error {
 	// Now switch to the newly created GOROOT
 	goenv.rootPath = output
 	// Run the commands needed to build the std library in the right mode
-	installArgs := []string{"install"}
+	installArgs := []string{"install", "-toolexec", abs(*buildid)}
 	gcflags := []string{}
 	ldflags := []string{"-trimpath", abs(".")}
 	asmflags := []string{"-trimpath", abs(".")}

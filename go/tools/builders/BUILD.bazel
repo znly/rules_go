@@ -143,5 +143,16 @@ go_tool_binary(
         "replicate.go",
         "stdlib.go",
     ],
+    data = [
+        ":buildid",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+go_tool_binary(
+    name = "buildid",
+    srcs = [
+        "buildid.go",
+    ],
     visibility = ["//visibility:public"],
 )

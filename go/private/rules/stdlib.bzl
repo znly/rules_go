@@ -32,6 +32,7 @@ load(
 def _stdlib_library_to_source(go, attr, source, merge):
   pkg = go.declare_directory(go, "pkg")
   root_file = go.declare_file(go, "ROOT")
+  buildid = attr._buildid_builder.files.to_list()[0]
   files = [root_file, go.go, pkg]
   args = go.args(go)
   args.add(["-out", root_file.dirname])
@@ -39,9 +40,10 @@ def _stdlib_library_to_source(go, attr, source, merge):
     args.add("-race")
   if go.mode.link == LINKMODE_C_SHARED:
     args.add("-shared")
+  args.add(["-buildid", buildid.path])
   go.actions.write(root_file, "")
   go.actions.run(
-      inputs = go.sdk_files + go.sdk_tools + go.crosstool + [go.package_list, root_file],
+      inputs = go.sdk_files + go.sdk_tools + go.crosstool + [buildid, go.package_list, root_file],
       outputs = [pkg],
       mnemonic = "GoStdlib",
       executable = attr._stdlib_builder.files.to_list()[0],
@@ -70,6 +72,11 @@ stdlib = go_rule(
             executable = True,
             cfg = "host",
             default = Label("@io_bazel_rules_go//go/tools/builders:stdlib"),
+        ),
+        "_buildid_builder": attr.label(
+            executable = True,
+            cfg = "host",
+            default = Label("@io_bazel_rules_go//go/tools/builders:buildid"),
         ),
     },
 )
