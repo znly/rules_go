@@ -194,7 +194,7 @@ func linkPath(out string, manifest []manifestEntry) error {
 		if err := os.MkdirAll(dstDir, 0777); err != nil {
 			return err
 		}
-		if err := os.Symlink(src, dst); err != nil {
+		if err := os.Symlink(src, dst); err != nil && !os.IsExist(err) {
 			return err
 		}
 	}
