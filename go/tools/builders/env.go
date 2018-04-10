@@ -192,9 +192,9 @@ func (env *GoEnv) env() []string {
 		)
 	}
 	cgoFlags := map[string]multiFlag{
-		"CGO_CFLAGS":   env.c_flags,
-		"CGO_CXXFLAGS": env.cxx_flags,
-		"CGO_CPPFLAGS": env.cpp_flags,
+		"CGO_CFLAGS":   append(env.c_flags, "-fdebug-prefix-map="+abs(".")+"=."),
+		"CGO_CXXFLAGS": append(env.cxx_flags, "-fdebug-prefix-map="+abs(".")+"=."),
+		"CGO_CPPFLAGS": append(env.cpp_flags, "-fdebug-prefix-map="+abs(".")+"=."),
 		"CGO_LDFLAGS":  env.ld_flags,
 	}
 	for envVar, flags := range cgoFlags {
