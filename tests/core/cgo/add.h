@@ -2,8 +2,8 @@
 extern "C" {
 #endif
 
-int add(int a, int b);
-int add_lambda(int a, int b);
+int add_c(int a, int b);
+int add_cpp(int a, int b);
 
 #ifdef __cplusplus
 }

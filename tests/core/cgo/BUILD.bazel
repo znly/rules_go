@@ -3,9 +3,11 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "go_default_library",
     cgo = True,
-    cxxopts = ["-std=c++14"],
+    copts = ["-DRULES_GO_C"],
+    cxxopts = ["-DRULES_GO_CPP"],
     srcs = [
         "add.h",
+        "add.c",
         "add.cpp",
         "adder.go",
     ],
