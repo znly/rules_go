@@ -101,7 +101,8 @@ def _cgo_codegen_impl(ctx):
   if not go.cgo_tools:
     fail("Go toolchain does not support cgo")
   linkopts = ctx.attr.linkopts[:]
-  copts = go.cgo_tools.c_options + go.cgo_tools.compiler_options + ctx.attr.copts
+  cppopts = go.cgo_tools.compiler_options + ctx.attr.cppopts
+  copts = go.cgo_tools.c_options + ctx.attr.copts
   deps = depset([], order="topological")
   cgo_export_h = go.declare_file(go, path="_cgo_export.h")
   cgo_export_c = go.declare_file(go, path="_cgo_export.c")
@@ -120,7 +121,7 @@ def _cgo_codegen_impl(ctx):
 
   source = split_srcs(ctx.files.srcs)
   for src in source.headers:
-    copts.extend(['-iquote', src.dirname])
+    cppopts.extend(['-iquote', src.dirname])
   stems = {}
   for src in source.go:
     mangled_stem, src_ext = _mangle(src, stems)
@@ -151,13 +152,13 @@ def _cgo_codegen_impl(ctx):
   runfiles = ctx.runfiles(collect_data = True)
   for d in ctx.attr.deps:
     runfiles = runfiles.merge(d.data_runfiles)
-    copts.extend(['-D' + define for define in d.cc.defines])
+    cppopts.extend(['-D' + define for define in d.cc.defines])
     for inc in d.cc.include_directories:
-      copts.extend(['-I', inc])
+      cppopts.extend(['-I', inc])
     for inc in d.cc.quote_include_directories:
-      copts.extend(['-iquote', inc])
+      cppopts.extend(['-iquote', inc])
     for inc in d.cc.system_include_directories:
-      copts.extend(['-isystem', inc])
+      cppopts.extend(['-isystem', inc])
     for lib in as_iterable(d.cc.libs):
       if lib.basename.startswith('lib') and lib.basename.endswith('.so'):
         linkopts.extend(['-L', lib.dirname, '-l', lib.basename[3:-3]])
@@ -170,6 +171,7 @@ def _cgo_codegen_impl(ctx):
   # The first -- below is to stop the cgo from processing args, the
   # second is an actual arg to forward to the underlying go tool
   args.add(["--", "--"])
+  args.add(cppopts)
   args.add(copts)
   ctx.actions.run(
       inputs = inputs + go.crosstool,
@@ -336,8 +338,8 @@ def setup_cgo_library(name, srcs, cdeps, copts, cxxopts, cppopts, clinkopts):
   base_dir = pkg_dir(
       "external/" + REPOSITORY_NAME[1:] if len(REPOSITORY_NAME) > 1 else "",
       PACKAGE_NAME)
-  copts = copts + ["-I", base_dir]
-  cxxopts = cxxopts + ["-I", base_dir]
+  copts = copts
+  cxxopts = cxxopts
   cppopts = cppopts + ["-I", base_dir]
 
   cgo_codegen_name = name + ".cgo_codegen"
@@ -395,7 +397,7 @@ def setup_cgo_library(name, srcs, cdeps, copts, cxxopts, cppopts, clinkopts):
       name = cgo_c_lib_name,
       srcs = [select_c_files],
       deps = cdeps,
-      copts = copts + platform_copts + [
+      copts = copts + cppopts + platform_copts + [
           # The generated thunks often contain unused variables.
           "-Wno-unused-variable",
       ],
@@ -411,7 +413,7 @@ def setup_cgo_library(name, srcs, cdeps, copts, cxxopts, cppopts, clinkopts):
       name = cgo_cxx_lib_name,
       srcs = [select_cxx_files],
       deps = cdeps,
-      copts = cxxopts + platform_copts + [
+      copts = cxxopts + cppopts + platform_copts + [
           # The generated thunks often contain unused variables.
           "-Wno-unused-variable",
       ],
@@ -433,7 +435,7 @@ def setup_cgo_library(name, srcs, cdeps, copts, cxxopts, cppopts, clinkopts):
       name = cgo_o_name,
       srcs = [select_main_c],
       deps = cdeps + cgo_libs,
-      copts = copts,
+      copts = copts + cppopts,
       linkopts = clinkopts,
       visibility = ["//visibility:private"],
   )
