@@ -78,7 +78,7 @@ def _c_filter_options(options, blacklist):
   return [opt for opt in options
         if not any([opt.startswith(prefix) for prefix in blacklist])]
 
-def _select_archives(files):
+def _select_archive(files):
   """Selects a single archive from a list of files produced by a
   static cc_library.
 
@@ -86,14 +86,25 @@ def _select_archives(files):
   order isn't guaranteed, so we can't simply pick the first one.
   """
   # list of file extensions in descending order or preference.
-  outs = []
   exts = [".pic.lo", ".lo", ".a"]
   for ext in exts:
     for f in files:
       if f.basename.endswith(ext):
-        outs.append(f)
+        return f
+
+def _select_archives(libs):
+  """Selects a one per item in a cc_library, if needed.
+
+  If no archive can be extracted from all the libraries, this will fail.
+  """
+  # list of file extensions in descending order or preference.
+  outs = []
+  for lib in libs:
+    archive = _select_archive(lib.files)
+    if archive:
+      outs.append(archive)
   if not outs:
-    fail("cc_library did not produce any files")
+    fail("cc_library(s) did not produce any files")
   return outs
 
 def _cgo_codegen_impl(ctx):
@@ -297,7 +308,7 @@ def _cgo_collect_info_impl(ctx):
           gen_go_srcs = codegen.gen_go + import_files,
           cgo_deps = codegen.deps,
           cgo_exports = codegen.exports,
-          cgo_archives = _select_archives(ctx.files.libs),
+          cgo_archives = _select_archives(ctx.attr.libs),
           runfiles = runfiles,
       ),
   )
