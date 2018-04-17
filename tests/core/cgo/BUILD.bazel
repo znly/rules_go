@@ -4,7 +4,8 @@ go_library(
     name = "go_default_library",
     cgo = True,
     copts = ["-DRULES_GO_C"],
-    cxxopts = ["-DRULES_GO_CPP"],
+    cxxopts = ["-DRULES_GO_CXX"],
+    cppopts = ["-DRULES_GO_CPP"],
     srcs = [
         "add.h",
         "add.c",
