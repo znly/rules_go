@@ -178,7 +178,7 @@ def _merge_pkg(x, y):
 def _add_manifest_entry(entries, entry_map, inputs, src, dst):
   if dst in entry_map:
     if entry_map[dst] != src.path:
-      fail("{}: references multiple files ({} and {})" % (dst, entry_map[dst], src.path))
+      fail("{}: references multiple files ({} and {})".format(dst, entry_map[dst], src.path))
     return
   entries.append(struct(src = src.path, dst = dst))
   entry_map[dst] = src.path
