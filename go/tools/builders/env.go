@@ -155,11 +155,11 @@ func (env *GoEnv) env() []string {
 		)
 	}
 	// Make sure the sandbox path doesn't appear in DWARF
-	env.cpp_flags = append(env.cpp_flags, "-fdebug-prefix-map="+abs(".")+"=.")
+	debugPrefixMap := "-fdebug-prefix-map=" + abs(".") + "=."
 	cgoFlags := map[string]multiFlag{
-		"CGO_CFLAGS":   env.c_flags,
-		"CGO_CXXFLAGS": env.cxx_flags,
-		"CGO_CPPFLAGS": env.cpp_flags,
+		"CGO_CFLAGS":   append(env.c_flags, debugPrefixMap),
+		"CGO_CXXFLAGS": append(env.cxx_flags, debugPrefixMap),
+		"CGO_CPPFLAGS": append(env.cpp_flags, debugPrefixMap),
 		"CGO_LDFLAGS":  env.ld_flags,
 	}
 	for envVar, flags := range cgoFlags {
