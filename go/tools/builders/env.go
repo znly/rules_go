@@ -151,6 +151,8 @@ func (env *GoEnv) env() []string {
 		)
 	}
 	if len(env.cpp_flags) > 0 {
+		// Make sure the sandbox path doesn't appear in DWARF
+		env.cpp_flags = append(env.cpp_flags, "-fdebug-prefix-map="+abs(".")+"=.")
 		v := strings.Join(env.cpp_flags, " ")
 		result = append(result,
 			fmt.Sprintf("CGO_CFLAGS=%s", v),
