@@ -16,7 +16,7 @@ def emit_pack(go,
     in_lib = None,
     out_lib = None,
     objects = [],
-    archive = None):
+    archives = []):
   """See go/toolchains.rst#pack for full documentation."""
 
   if in_lib == None: fail("in_lib is a required parameter")
@@ -32,9 +32,8 @@ def emit_pack(go,
   inputs.extend(objects)
   arguments.add(objects, before_each="-obj")
 
-  if archive:
-    inputs.append(archive)
-    arguments.add(["-arc", archive])
+  inputs.extend(archives)
+  arguments.add(archives, before_each="-arc")
 
   go.actions.run(
       inputs = inputs,

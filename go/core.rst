@@ -90,7 +90,7 @@ Binaries that depend on this library may also set this value.
 
     go_binary(
         name = "cmd",
-        srcs = ["main.go"], 
+        srcs = ["main.go"],
         deps = ["//version:go_default_library"],
         x_defs = {"example.com/repo/version.Version", "0.9"},
     )
@@ -232,6 +232,18 @@ Attributes
 | :param:`copts`             | :type:`string_list`         | :value:`[]`                           |
 +----------------------------+-----------------------------+---------------------------------------+
 | List of flags to add to the C compilation command.                                               |
+| Subject to `"Make variable"`_ substitution and `Bourne shell tokenization`_.                     |
+| Only valid if :param:`cgo` = :value:`True`.                                                      |
++----------------------------+-----------------------------+---------------------------------------+
+| :param:`cxxopts`           | :type:`string_list`         | :value:`[]`                           |
++----------------------------+-----------------------------+---------------------------------------+
+| List of flags to add to the C++ compilation command.                                             |
+| Subject to `"Make variable"`_ substitution and `Bourne shell tokenization`_.                     |
+| Only valid if :param:`cgo` = :value:`True`.                                                      |
++----------------------------+-----------------------------+---------------------------------------+
+| :param:`cppopts`           | :type:`string_list`         | :value:`[]`                           |
++----------------------------+-----------------------------+---------------------------------------+
+| List of flags to add to the C/C++ preprocessor command.                                          |
 | Subject to `"Make variable"`_ substitution and `Bourne shell tokenization`_.                     |
 | Only valid if :param:`cgo` = :value:`True`.                                                      |
 +----------------------------+-----------------------------+---------------------------------------+
@@ -392,6 +404,18 @@ Attributes
 | Subject to `"Make variable"`_ substitution and `Bourne shell tokenization`_.                     |
 | Only valid if :param:`cgo` = :value:`True`.                                                      |
 +----------------------------+-----------------------------+---------------------------------------+
+| :param:`cxxopts`           | :type:`string_list`         | :value:`[]`                           |
++----------------------------+-----------------------------+---------------------------------------+
+| List of flags to add to the C++ compilation command.                                             |
+| Subject to `"Make variable"`_ substitution and `Bourne shell tokenization`_.                     |
+| Only valid if :param:`cgo` = :value:`True`.                                                      |
++----------------------------+-----------------------------+---------------------------------------+
+| :param:`cppopts`           | :type:`string_list`         | :value:`[]`                           |
++----------------------------+-----------------------------+---------------------------------------+
+| List of flags to add to the C/C++ preprocessor command.                                          |
+| Subject to `"Make variable"`_ substitution and `Bourne shell tokenization`_.                     |
+| Only valid if :param:`cgo` = :value:`True`.                                                      |
++----------------------------+-----------------------------+---------------------------------------+
 | :param:`clinkopts`         | :type:`string_list`         | :value:`[]`                           |
 +----------------------------+-----------------------------+---------------------------------------+
 | List of flags to add to the C link command.                                                      |
@@ -500,6 +524,18 @@ Attributes
 | :param:`copts`             | :type:`string_list`         | :value:`[]`                           |
 +----------------------------+-----------------------------+---------------------------------------+
 | List of flags to add to the C compilation command.                                               |
+| Subject to `"Make variable"`_ substitution and `Bourne shell tokenization`_.                     |
+| Only valid if :param:`cgo` = :value:`True`.                                                      |
++----------------------------+-----------------------------+---------------------------------------+
+| :param:`cxxopts`           | :type:`string_list`         | :value:`[]`                           |
++----------------------------+-----------------------------+---------------------------------------+
+| List of flags to add to the C++ compilation command.                                             |
+| Subject to `"Make variable"`_ substitution and `Bourne shell tokenization`_.                     |
+| Only valid if :param:`cgo` = :value:`True`.                                                      |
++----------------------------+-----------------------------+---------------------------------------+
+| :param:`cppopts`           | :type:`string_list`         | :value:`[]`                           |
++----------------------------+-----------------------------+---------------------------------------+
+| List of flags to add to the C/C++ preprocessor command.                                          |
 | Subject to `"Make variable"`_ substitution and `Bourne shell tokenization`_.                     |
 | Only valid if :param:`cgo` = :value:`True`.                                                      |
 +----------------------------+-----------------------------+---------------------------------------+

@@ -154,9 +154,9 @@ In general, only rules_go should need to build or handle these.
 +--------------------------------+-----------------------------------------------------------------+
 | The exposed cc headers for these sources.                                                        |
 +--------------------------------+-----------------------------------------------------------------+
-| :param:`cgo_archive`           | :type:`File`                                                    |
+| :param:`cgo_archives`          | :type:`list of File`                                            |
 +--------------------------------+-----------------------------------------------------------------+
-| The cgo archive to merge into a go archive for these sources.                                    |
+| The cgo archives to merge into a go archive for these sources.                                   |
 +--------------------------------+-----------------------------------------------------------------+
 
 

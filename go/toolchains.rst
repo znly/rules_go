@@ -730,10 +730,10 @@ It does not return anything.
 +--------------------------------+-----------------------------+-----------------------------------+
 | An iterable of object files to be added to the output archive file.                              |
 +--------------------------------+-----------------------------+-----------------------------------+
-| :param:`archive`               | :type:`File`                | :value:`None`                     |
+| :param:`archives`              | :type:`list of File`        | :value:`[]`                       |
 +--------------------------------+-----------------------------+-----------------------------------+
-| An additional archive whose objects will be appended to the output.                              |
-| This can be an ar file in either common form or either the bsd or sysv variations.               |
+| Additional archives whose objects will be appended to the output.                                |
+| These can be ar files in either common form or either the bsd or sysv variations.                |
 +--------------------------------+-----------------------------+-----------------------------------+
 
 
