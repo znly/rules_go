@@ -69,6 +69,7 @@ def _mangle(src, stems):
 
 
 _DEFAULT_PLATFORM_COPTS = select({
+    "@io_bazel_rules_go//go/platform:android": ["-ldl", "-pthread"],
     "@io_bazel_rules_go//go/platform:darwin": [],
     "@io_bazel_rules_go//go/platform:windows_amd64": ["-mthreads"],
     "//conditions:default": ["-pthread"],
