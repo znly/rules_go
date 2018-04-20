@@ -480,7 +480,13 @@ def setup_cgo_library(name, srcs, cdeps, copts, cxxopts, cppopts, clinkopts, obj
         **objcopts
     )
     cgo_o_deps.append(cgo_objc_lib_name)
-    # Use the implicit fully linked target
+    # cgo needs all the symbols it can find when generating _cgo_import.go. For
+    # cc_library we use linkstatic = 1. This option does not exist on
+    # objc_library. To work around that, we used the implicit and documented
+    # target that objc_library provides, which includes the fully transitive
+    # dependencies.
+    # See https://docs.bazel.build/versions/master/be/objective-c.html#objc_library
+    # for more information.
     cgo_collect_info_libs.append(cgo_objc_lib_name + "_fully_linked.a")
 
   # Create a loadable object with no undefined references. cgo reads this
