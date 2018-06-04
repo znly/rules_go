@@ -41,7 +41,7 @@ def apple_ensure_options(ctx, env, tags, compiler_options, linker_options):
     if system_name.endswith("-ios"):
         tags.append("ios")  # needed for stdlib building
     if platform in [apple_common.platform.ios_device, apple_common.platform.ios_simulator]:
-        min_version = _apple_version_min(platform, "6.1")
+        min_version = _apple_version_min(platform, "7.0")
         compiler_options.append(min_version)
         linker_options.append(min_version)
     xcode_config = ctx.attr._xcode_config[apple_common.XcodeVersionConfig]
