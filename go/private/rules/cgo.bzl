@@ -74,6 +74,13 @@ _DEFAULT_PLATFORM_COPTS = select({
     "//conditions:default": ["-pthread"],
 })
 
+_DEFAULT_PLATFORM_LINKOPTS = select({
+    "@io_bazel_rules_go//go/platform:android": ["-llog", "-ldl"],
+    "@io_bazel_rules_go//go/platform:darwin": [],
+    "@io_bazel_rules_go//go/platform:windows_amd64": ["-mthreads"],
+    "//conditions:default": ["-pthread"],
+})
+
 def _c_filter_options(options, blacklist):
     return [
         opt
@@ -493,7 +500,7 @@ def setup_cgo_library(name, srcs, cdeps, copts, cxxopts, cppopts, clinkopts, obj
     # into binaries that depend on this cgo_library. It will also be used
     # in _cgo_.o.
     platform_copts = _DEFAULT_PLATFORM_COPTS
-    platform_linkopts = platform_copts
+    platform_linkopts = _DEFAULT_PLATFORM_LINKOPTS
 
     cgo_c_lib_name = name + ".cgo_c_lib"
     native.cc_library(
