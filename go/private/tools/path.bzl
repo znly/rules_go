@@ -28,58 +28,41 @@ load(
     "as_iterable",
     "as_list",
 )
-load(
-    "@io_bazel_rules_go//go/private:rules/rule.bzl",
-    "go_rule",
-)
-load(
-    "@io_bazel_rules_go//go/private:rules/aspect.bzl",
-    "go_archive_aspect",
-)
-load(
-    "@io_bazel_rules_go//go/platform:list.bzl",
-    "GOOS",
-    "GOARCH",
-)
-load(
-    "@io_bazel_rules_go//go/private:mode.bzl",
-    "LINKMODE_NORMAL",
-    "LINKMODES",
-)
 
 def _go_path_impl(ctx):
     # Gather all archives. Note that there may be multiple packages with the same
-    # importpath (e.g., multiple vendored libraries, internal tests).
-    go = go_context(ctx)
-    direct_archives = []
-    transitive_archives = []
+    # importpath (e.g., multiple vendored libraries, internal tests). The same
+    # package may also appear in different modes.
+    mode_to_deps = {}
     for dep in ctx.attr.deps:
         archive = get_archive(dep)
-        direct_archives.append(archive.data)
-        transitive_archives.append(archive.transitive)
-    archives = depset(direct = direct_archives, transitive = transitive_archives)
+        if archive.mode not in mode_to_deps:
+            mode_to_deps[archive.mode] = []
+        mode_to_deps[archive.mode].append(archive)
+    mode_to_archive = {}
+    for mode, archives in mode_to_deps.items():
+        direct = [a.data for a in archives]
+        transitive = [a.transitive for a in archives]
+        mode_to_archive[mode] = depset(direct = direct, transitive = transitive)
 
     # Collect sources and data files from archives. Merge archives into packages.
     pkg_map = {}  # map from package path to structs
-    pkg_prefix = "pkg/" + go.mode.goos + "_" + go.mode.goarch + "/"
-    for archive in as_iterable(archives):
-        importpath, pkgpath = effective_importpath_pkgpath(archive)
-        if importpath == "":
-            continue  # synthetic archive or inferred location
-        out_prefix = "src/" + pkgpath
-        pkg_out_prefix = pkg_prefix + pkgpath
-        pkg = struct(
+    for mode, archives in mode_to_archive.items():
+        for archive in as_iterable(archives):
+            importpath, pkgpath = effective_importpath_pkgpath(archive)
+            if importpath == "":
+                continue  # synthetic archive or inferred location
+            pkg = struct(
             importpath = importpath,
-            dir = out_prefix,
-            pkgdir = pkg_out_prefix,
-            srcs = as_list(archive.orig_srcs),
-            data = as_list(archive.data_files),
-            file = archive.file,
-        )
-        if pkgpath in pkg_map:
-            _merge_pkg(pkg_map[pkgpath], pkg)
-        else:
-            pkg_map[pkgpath] = pkg
+                dir = "src/" + pkgpath,
+                srcs = as_list(archive.orig_srcs),
+                data = as_list(archive.data_files),
+                pkgs = {mode: archive.file},
+            )
+            if pkgpath in pkg_map:
+                _merge_pkg(pkg_map[pkgpath], pkg)
+            else:
+                pkg_map[pkgpath] = pkg
 
     # Build a manifest file that includes all files to copy/link/zip.
     inputs = []
@@ -89,12 +72,13 @@ def _go_path_impl(ctx):
         for f in pkg.srcs:
             dst = pkg.dir + "/" + f.basename
             _add_manifest_entry(manifest_entries, manifest_entry_map, inputs, f, dst)
-        if ctx.attr.include_pkg:
-            manifest_entries.append(struct(
-                src = pkg.file.path,
-                dst = pkg.pkgdir + "." + pkg.file.extension,
-            ))
-            inputs.append(pkg.file)
+    if ctx.attr.include_pkg:
+        for pkg in pkg_map.values():
+            for mode, f in pkg.pkgs.items():
+                # TODO(jayconrod): include other mode attributes, e.g., race.
+                installsuffix = mode.goos + "_" + mode.goarch
+                dst = "pkg/" + installsuffix + "/" + pkg.dir[len("src/"):] + ".a"
+                _add_manifest_entry(manifest_entries, manifest_entry_map, inputs, f, dst)
     if ctx.attr.include_data:
         for pkg in pkg_map.values():
             for f in pkg.data:
@@ -169,7 +153,7 @@ def _go_path_impl(ctx):
         ),
     ]
 
-go_path = go_rule(
+go_path = rule(
     _go_path_impl,
     attrs = {
         "deps": attr.label_list(providers = [GoArchive]),
@@ -200,6 +184,7 @@ def _merge_pkg(x, y):
     x_data = {f.path: None for f in x.data}
     x.srcs.extend([f for f in y.srcs if f.path not in x_srcs])
     x.data.extend([f for f in y.data if f.path not in x_srcs])
+    x.pkgs.update(y.pkgs)
 
 def _add_manifest_entry(entries, entry_map, inputs, src, dst):
     if dst in entry_map:

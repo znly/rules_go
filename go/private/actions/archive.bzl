@@ -116,4 +116,5 @@ def emit_archive(go, source = None):
         cgo_deps = sets.union(source.cgo_deps, *[a.cgo_deps for a in direct]),
         cgo_exports = sets.union(source.cgo_exports, *[a.cgo_exports for a in direct]),
         runfiles = runfiles,
+        mode = go.mode,
     )
