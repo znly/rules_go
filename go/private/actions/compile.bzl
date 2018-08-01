@@ -13,10 +13,6 @@
 # limitations under the License.
 
 load(
-    "@io_bazel_rules_go//go/private:common.bzl",
-    "sets",
-)
-load(
     "@io_bazel_rules_go//go/private:mode.bzl",
     "LINKMODE_C_ARCHIVE",
     "LINKMODE_C_SHARED",
@@ -69,7 +65,7 @@ def emit_compile(
 
     tool_args = go.actions.args()
     if asmhdr:
-        tool_args.add_all(["-asmhdr", asmhdr.path])
+        tool_args.add_all(["-asmhdr", asmhdr])
         outputs.append(asmhdr)
     tool_args.add_all(archives, before_each = "-I", map_each = _searchpath)
     tool_args.add_all(["-trimpath", ".", "-I", "."])
@@ -101,12 +97,15 @@ def emit_compile(
     )
 
 def _bootstrap_compile(go, sources, out_lib, gc_goopts):
-    args = ["tool", "compile", "-trimpath", "$(pwd)", "-o", out_lib.path]
-    args.extend(gc_goopts)
-    args.extend([s.path for s in sources])
+    cmd = [go.go.path, "tool", "compile", "-trimpath", "$(pwd)"]
+    args = go.actions.args()
+    args.add_all(["-o", out_lib])
+    args.add_all(gc_goopts)
+    args.add_all(sources)
     go.actions.run_shell(
         inputs = sources + go.sdk.libs + go.sdk.tools + [go.go],
         outputs = [out_lib],
+        arguments = [args],
         mnemonic = "GoCompile",
-        command = "export GOROOT=$(pwd)/{} && export GOROOT_FINAL=GOROOT && {} {}".format(go.root, go.go.path, " ".join(args)),
+        command = "export GOROOT=$(pwd)/{} && export GOROOT_FINAL=GOROOT && {} \"$@\"".format(go.root, " ".join(cmd)),
     )

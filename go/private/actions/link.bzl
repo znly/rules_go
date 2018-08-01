@@ -24,6 +24,23 @@ load(
     "LINKMODE_PLUGIN",
 )
 
+def _format_archive(d):
+    return "{}={}={}".format(d.label, d.importmap, d.file.path)
+
+def _map_archive(x):
+    # Build the set of transitive dependencies. Currently, we tolerate multiple
+    # archives with the same importmap (though this will be an error in the
+    # future), but there is a special case which is difficult to avoid:
+    # If a go_test has internal and external archives, and the external test
+    # transitively depends on the library under test, we need to exclude the
+    # library under test and use the internal test archive instead.
+    deps = depset(transitive = [d.transitive for d in x.archive.direct])
+    return [
+        _format_archive(d)
+        for d in deps.to_list()
+        if not any([d.importmap == t.importmap for t in x.test_archives])
+    ]
+
 def emit_link(
         go,
         archive = None,
@@ -67,23 +84,9 @@ def emit_link(
     if go.mode.link == LINKMODE_PLUGIN:
         tool_args.add_all(["-pluginpath", archive.data.importpath])
 
-    # Build the set of transitive dependencies. Currently, we tolerate multiple
-    # archives with the same importmap (though this will be an error in the
-    # future), but there is a special case which is difficult to avoid:
-    # If a go_test has internal and external archives, and the external test
-    # transitively depends on the library under test, we need to exclude the
-    # library under test and use the internal test archive instead.
-    deps = depset(transitive = [d.transitive for d in archive.direct])
-    dep_args = [
-        "{}={}={}".format(d.label, d.importmap, d.file.path)
-        for d in deps.to_list()
-        if not any([d.importmap == t.importmap for t in test_archives])
-    ]
-    dep_args.extend([
-        "{}={}={}".format(d.label, d.importmap, d.file.path)
-        for d in test_archives
-    ])
-    builder_args.add_all(dep_args, before_each = "-dep")
+    builder_args.add_all([struct(archive = archive, test_archives = test_archives)], before_each = "-dep",
+        map_each = _map_archive)
+    builder_args.add_all(test_archives, before_each = "-dep", map_each = _format_archive)
 
     # Build a list of rpaths for dynamic libraries we need to find.
     # rpaths are relative paths from the binary to directories where libraries
@@ -129,9 +132,7 @@ def emit_link(
     tool_args.add_all(go.toolchain.flags.link)
     if go.mode.strip:
         tool_args.add("-w")
-    if extldflags:
-        tool_args.add("-extldflags")
-        tool_args.add_joined(extldflags, join_with = " ")
+    tool_args.add_joined("-extldflags", extldflags, join_with = " ")
 
     builder_args.use_param_file("@%s")
     builder_args.set_param_file_format("multiline")
