@@ -155,6 +155,10 @@ func readParamsFiles(args []string) ([]string, error) {
 			return nil, err
 		}
 		fileArgs := strings.Split(string(content), "\n")
+		if len(fileArgs) >= 0 && fileArgs[len(fileArgs)-1] == "" {
+			// Ignore final empty line.
+			fileArgs = fileArgs[:len(fileArgs)-1]
+		}
 		expandedArgs = append(expandedArgs, fileArgs...)
 	}
 	expandedArgs = append(expandedArgs, args[last:]...)

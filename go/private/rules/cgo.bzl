@@ -139,9 +139,9 @@ def _cgo_codegen_impl(ctx):
     cgo_types = go.declare_file(go, path = "_cgo_gotypes.go")
     out_dir = cgo_main.dirname
 
-    builder_args = go.args(go)  # interpreted by builder
-    tool_args = ctx.actions.args()  # interpreted by cgo
-    cc_args = ctx.actions.args()  # interpreted by C compiler
+    builder_args = go.builder_args(go)  # interpreted by builder
+    tool_args = go.tool_args(go)  # interpreted by cgo
+    cc_args = go.tool_args(go)  # interpreted by C compiler
 
     c_outs = [cgo_export_h, cgo_export_c]
     cxx_outs = [cgo_export_h]
@@ -295,7 +295,7 @@ _cgo_codegen = go_rule(
 def _cgo_import_impl(ctx):
     go = go_context(ctx)
     out = go.declare_file(go, path = "_cgo_import.go")
-    args = go.args(go)
+    args = go.builder_args(go)
     args.add_all([
         "-import",
         "-src",

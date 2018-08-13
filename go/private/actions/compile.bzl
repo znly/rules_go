@@ -58,7 +58,7 @@ def emit_compile(
               go.sdk.tools + go.stdlib.libs)
     outputs = [out_lib]
 
-    builder_args = go.args(go)
+    builder_args = go.builder_args(go)
     builder_args.add_all(sources, before_each = "-src")
     builder_args.add_all(archives, before_each = "-dep", map_each = _importpath)
     builder_args.add_all(archives, before_each = "-importmap", map_each = _importmap)
@@ -67,7 +67,7 @@ def emit_compile(
     if testfilter:
         builder_args.add_all(["-testfilter", testfilter])
 
-    tool_args = go.actions.args()
+    tool_args = go.tool_args(go)
     if asmhdr:
         tool_args.add_all(["-asmhdr", asmhdr])
         outputs.append(asmhdr)

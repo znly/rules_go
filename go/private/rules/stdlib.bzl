@@ -57,7 +57,7 @@ def _build_stdlib(go, attr):
     src = go.declare_directory(go, "src")
     root_file = go.declare_file(go, "ROOT")
     filter_buildid = attr._filter_buildid_builder.files.to_list()[0]
-    args = go.args(go)
+    args = go.builder_args(go)
     args.add_all(["-out", root_file.dirname])
     if go.mode.race:
         args.add("-race")
