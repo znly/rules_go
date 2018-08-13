@@ -121,3 +121,11 @@ def get_mode(ctx, host_only, go_toolchain, go_context_data):
         goos = goos,
         goarch = goarch,
     )
+
+def installsuffix(mode):
+    s = mode.goos + "_" + mode.goarch
+    if mode.race:
+        s += "_race"
+    elif mode.msan:
+        s += "_msan"
+    return s

@@ -90,10 +90,11 @@ def emit_link(
 
     builder_args.add_all(
         [struct(archive = archive, test_archives = test_archives)],
-        before_each = "-dep",
+        before_each = "-arc",
         map_each = _map_archive,
     )
-    builder_args.add_all(test_archives, before_each = "-dep", map_each = _format_archive)
+    builder_args.add_all(test_archives, before_each = "-arc", map_each = _format_archive)
+    builder_args.add("-package_list", go.package_list)
 
     # Build a list of rpaths for dynamic libraries we need to find.
     # rpaths are relative paths from the binary to directories where libraries
@@ -148,6 +149,7 @@ def emit_link(
             go.crosstool,
             stamp_inputs,
             go.sdk.tools,
+            [go.sdk.package_list],
             go.stdlib.libs,
         ),
         outputs = [executable],
