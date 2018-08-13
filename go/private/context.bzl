@@ -79,6 +79,8 @@ def _declare_directory(go, path = "", ext = "", name = ""):
 
 def _new_args(go):
     args = go.actions.args()
+    args.use_param_file("-param=%s")
+    args.set_param_file_format("multiline")
     args.add_all(["-sdk", go.sdk.root_file.dirname])
     args.add_joined("-tags", go.tags, join_with = ",")
     return args
