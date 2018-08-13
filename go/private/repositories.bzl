@@ -147,7 +147,7 @@ def go_rules_dependencies():
         git_repository,
         name = "org_golang_google_genproto",
         remote = "https://github.com/google/go-genproto",
-        commit = "daca94659cb50e9f37c1b834680f2e46358f10b0",  # master as of 2018-08-06
+        commit = "383e8b2c3b9e36c4076b235b32537292176bae20",  # master as of 2018-08-13
         overlay = manifest["org_golang_google_genproto"],
         # build_file_proto_mode = "disable_global",
         # importpath = "google.golang.org/genproto",
@@ -155,9 +155,9 @@ def go_rules_dependencies():
     _maybe(
         http_archive,
         name = "go_googleapis",
-        # master as of 2018-07-01
-        urls = ["https://codeload.github.com/googleapis/googleapis/zip/f47204e81e5aee2c1dfc7cc5ea729aa2fbaa7603"],
-        strip_prefix = "googleapis-f47204e81e5aee2c1dfc7cc5ea729aa2fbaa7603",
+        # master as of 2018-08-08
+        urls = ["https://codeload.github.com/googleapis/googleapis/zip/3e68e19410baa7d78cdacc45b034eafe7467b439"],
+        strip_prefix = "googleapis-3e68e19410baa7d78cdacc45b034eafe7467b439",
         type = "zip",
         overlay = manifest["go_googleapis"],
     )
