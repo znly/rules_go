@@ -55,6 +55,11 @@ func run(args []string) error {
 		return err
 	}
 
+	output, err = processPath(output)
+	if err != nil {
+		return err
+	}
+
 	// Now switch to the newly created GOROOT
 	os.Setenv("GOROOT", output)
 
