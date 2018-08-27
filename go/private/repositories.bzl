@@ -69,7 +69,7 @@ def go_rules_dependencies():
         git_repository,
         name = "com_github_gogo_protobuf",
         remote = "https://github.com/gogo/protobuf",
-        commit = "636bf0302bc95575d69441b25a2603156ffdddf1",  # v1.1.1, as of 2018-08-06
+        commit = "1adfc126b41513cc696b209667c8656ea7aac67c",  # v1.0.0, as of 2018-07-03
         overlay = manifest["com_github_gogo_protobuf"],
         # importpath = "github.com/gogo/protobuf",
         # build_file_proto_mode = "legacy",
