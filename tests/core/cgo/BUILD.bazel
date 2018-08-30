@@ -123,3 +123,16 @@ cc_library(
     name = "bar_dep",
     srcs = ["bar.cc"],
 )
+
+go_test(
+    name = "race_test",
+    srcs = [
+        "race_off.c",
+        "race_off.go",
+        "race_on.c",
+        "race_on.go",
+        "race_test.go",
+    ],
+    cgo = True,
+    race = "on",
+)

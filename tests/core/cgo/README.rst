@@ -25,3 +25,9 @@ libstdc++, depending on how they're linked. This tests several binaries:
 * ``cc_srcs`` - has some C++ code in sources, should depend on libstdc++.
 * ``cc_deps`` - depends on a ``cc_library``, should depend on libstdc++
   because we don't know what's in it.
+
+race_test
+---------
+
+Checks that cgo code in a binary with ``race = "on"`` is compiled in race mode.
+Verifies #1592.
