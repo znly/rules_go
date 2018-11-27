@@ -142,12 +142,11 @@ def _detect_host_platform(ctx):
             uname = res.stdout.strip()
             if uname == "s390x":
                 host = "linux_s390x"
-            elif uname == "ppc64le":
-                host = "linux_ppc64le"
             elif uname == "i686":
                 host = "linux_386"
 
         # uname -p is not working on Aarch64 boards
+        # or for ppc64le on some distros
         res = ctx.execute(["uname", "-m"])
         if res.return_code == 0:
             uname = res.stdout.strip()
@@ -157,6 +156,8 @@ def _detect_host_platform(ctx):
                 host = "linux_armv6l"
             elif uname == "armv7l":
                 host = "linux_armv6l"
+            elif uname == "ppc64le":
+                host = "linux_ppc64le"
 
         # Default to amd64 when uname doesn't return a known value.
 
