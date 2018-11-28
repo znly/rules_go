@@ -247,11 +247,11 @@ def _cgo_codegen_impl(ctx):
             linkopts.extend(d.cc.link_flags)
         elif hasattr(d, "objc"):
             cppopts.extend(["-D" + define for define in d.objc.define.to_list()])
-            for inc in d.objc.include:
+            for inc in d.objc.include.to_list():
                 _include_unique(cppopts, "-I", inc, seen_includes)
-            for inc in d.objc.iquote:
+            for inc in d.objc.iquote.to_list():
                 _include_unique(cppopts, "-iquote", inc, seen_quote_includes)
-            for inc in d.objc.include_system:
+            for inc in d.objc.include_system.to_list():
                 _include_unique(cppopts, "-isystem", inc, seen_system_includes)
 
             # TODO(jayconrod): do we need to link against dynamic libraries or
