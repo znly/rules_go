@@ -262,10 +262,17 @@ default).
         visibility = ["//visibility:public"],
     )
 
-Setting ``vet = True`` is equivalent to adding the ``atomic``, ``bool``,
-``buildtags``, ``nilfunc``, and ``printf`` analyzers from
+Setting ``vet = True`` is equivalent to adding the ``atomic``, ``bools``,
+``buildtag``, ``nilfunc``, and ``printf`` analyzers from
 ``@org_golang_x_tools//go/analysis/passes`` to the ``deps`` list of your
 ``nogo`` rule.
+
+See the full list of available nogo checks:
+
+.. code:: shell
+
+    bazel query 'kind(go_tool_library, @org_golang_x_tools//go/analysis/passes/...)'
+
 
 API
 ---
