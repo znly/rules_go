@@ -329,6 +329,7 @@ platforms:
     - "-//tests/core/cgo:cc_deps"
     - "-//tests/core/cgo:c_srcs"
     - "-//tests/core/cgo:bar_dep"
+    - "-//tests/core/cgo:tag_test" # TODO(#2031): FindBinary does not work
     - "-//tests/core/coverage:coverage_test_test"
     - "-//tests/core/coverage:cross_cover_test_test"
     - "-//tests/core/cross:cross_test"

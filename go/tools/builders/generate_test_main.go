@@ -21,7 +21,6 @@ import (
 	"flag"
 	"fmt"
 	"go/ast"
-	"go/build"
 	"go/doc"
 	"go/parser"
 	"go/token"
@@ -205,10 +204,11 @@ func genTestMain(args []string) error {
 	}
 
 	// filter our input file list
-	filenames, err := filterFiles(build.Default, sourceList)
+	filteredSrcs, err := filterAndSplitFiles(sourceList)
 	if err != nil {
 		return err
 	}
+	goSrcs := filteredSrcs.goSrcs
 
 	outFile := os.Stdout
 	if *out != "" {
@@ -227,12 +227,12 @@ func genTestMain(args []string) error {
 
 	testFileSet := token.NewFileSet()
 	pkgs := map[string]bool{}
-	for _, f := range filenames {
-		parse, err := parser.ParseFile(testFileSet, f, nil, parser.ParseComments)
+	for _, f := range goSrcs {
+		parse, err := parser.ParseFile(testFileSet, f.filename, nil, parser.ParseComments)
 		if err != nil {
-			return fmt.Errorf("ParseFile(%q): %v", f, err)
+			return fmt.Errorf("ParseFile(%q): %v", f.filename, err)
 		}
-		pkg := sourceMap[f]
+		pkg := sourceMap[f.filename]
 		if strings.HasSuffix(parse.Name.String(), "_test") {
 			pkg += "_test"
 		}

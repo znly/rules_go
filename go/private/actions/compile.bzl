@@ -16,10 +16,6 @@ load(
     "@io_bazel_rules_go//go/private:mode.bzl",
     "link_mode_args",
 )
-load(
-    "@io_bazel_rules_go//go/private:skylib/lib/shell.bzl",
-    "shell",
-)
 
 def _archive(v):
     return "{}={}={}={}".format(

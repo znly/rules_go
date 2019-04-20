@@ -84,7 +84,7 @@ go_test(
 
 go_binary(
     name = "pure",
-    srcs = ["main.go"],
+    srcs = ["pure.go"],
     out = "pure_bin",
     cgo = True,
     pure = "on",
@@ -94,7 +94,7 @@ go_binary(
     name = "c_srcs",
     srcs = [
         "foo.c",
-        "main.go",
+        "foo.go",
     ],
     out = "c_srcs_bin",
     cgo = True,
@@ -104,7 +104,7 @@ go_binary(
     name = "cc_srcs",
     srcs = [
         "bar.cc",
-        "main.go",
+        "bar.go",
     ],
     out = "cc_srcs_bin",
     cgo = True,
@@ -112,7 +112,7 @@ go_binary(
 
 go_binary(
     name = "cc_deps",
-    srcs = ["main.go"],
+    srcs = ["bar.go"],
     out = "cc_deps_bin",
     cdeps = [":bar_dep"],
     cgo = True,
@@ -134,4 +134,36 @@ go_test(
     ],
     cgo = True,
     race = "on",
+)
+
+go_test(
+    name = "tag_test",
+    srcs = ["tag_test.go"],
+    data = [
+        ":tag_cgo_bin",
+        ":tag_pure_bin",
+    ],
+    rundir = ".",
+    deps = ["//go/tools/bazel:go_default_library"],
+)
+
+go_binary(
+    name = "tag_pure_bin",
+    srcs = [
+        "tag_pure.go",
+        "tag_pure_err.c",
+        "tag_pure_err.go",
+    ],
+    cgo = True,
+    pure = "on",
+)
+
+go_binary(
+    name = "tag_cgo_bin",
+    srcs = [
+        "tag_cgo.go",
+        "tag_cgo_err.go",
+    ],
+    cgo = True,
+    pure = "off",
 )

@@ -15,6 +15,7 @@
 package main
 
 import (
+	"fmt"
 	"go/ast"
 	"go/build"
 	"go/parser"
@@ -25,77 +26,116 @@ import (
 	"strings"
 )
 
-type goMetadata struct {
+type fileInfo struct {
 	filename string
+	ext      ext
 	matched  bool
 	isCgo    bool
 	pkg      string
 	imports  []string
 }
 
-// readFiles collects metadata for a list of files.
-func readFiles(bctx build.Context, inputs []string) ([]*goMetadata, error) {
-	outputs := []*goMetadata{}
-	for _, input := range inputs {
-		if m, err := readGoMetadata(bctx, abs(input), true); err != nil {
-			return nil, err
-		} else if m.matched {
-			outputs = append(outputs, m)
-		}
-	}
-	return outputs, nil
+type ext int
+
+const (
+	goExt ext = iota
+	cExt
+	cxxExt
+	mExt
+	sExt
+	hExt
+)
+
+type archiveSrcs struct {
+	goSrcs, cSrcs, cxxSrcs, mSrcs, sSrcs, hSrcs []fileInfo
 }
 
-// filterFiles applies build constraints to a list of input files. It returns
-// list of input files that should be compiled.
-func filterFiles(bctx build.Context, inputs []string) ([]string, error) {
-	var outputs []string
-	for _, input := range inputs {
-		if m, err := readGoMetadata(bctx, input, false); err != nil {
-			return nil, err
-		} else if m.matched {
-			outputs = append(outputs, input)
+// filterAndSplitFiles filters files using build constraints and collates
+// them by extension.
+func filterAndSplitFiles(fileNames []string) (archiveSrcs, error) {
+	var res archiveSrcs
+	for _, s := range fileNames {
+		src, err := readFileInfo(build.Default, s, true)
+		if err != nil {
+			return archiveSrcs{}, err
 		}
+		if !src.matched {
+			continue
+		}
+		var srcs *[]fileInfo
+		switch src.ext {
+		case goExt:
+			srcs = &res.goSrcs
+		case cExt:
+			srcs = &res.cSrcs
+		case cxxExt:
+			srcs = &res.cxxSrcs
+		case mExt:
+			srcs = &res.mSrcs
+		case sExt:
+			srcs = &res.sSrcs
+		case hExt:
+			srcs = &res.hSrcs
+		}
+		*srcs = append(*srcs, src)
 	}
-	return outputs, nil
+	return res, nil
 }
 
-// readGoMetadata applies build constraints to an input file and returns whether
+// readFileInfo applies build constraints to an input file and returns whether
 // it should be compiled.
-func readGoMetadata(bctx build.Context, input string, needPackage bool) (*goMetadata, error) {
-	m := &goMetadata{
-		filename: input,
+func readFileInfo(bctx build.Context, input string, needPackage bool) (fileInfo, error) {
+	fi := fileInfo{filename: input}
+	if ext := filepath.Ext(input); ext == ".C" {
+		fi.ext = cxxExt
+	} else {
+		switch strings.ToLower(ext) {
+		case ".go":
+			fi.ext = goExt
+		case ".c":
+			fi.ext = cExt
+		case ".cc", ".cxx", ".cpp":
+			fi.ext = cxxExt
+		case ".m", ".mm":
+			fi.ext = mExt
+		case ".s":
+			fi.ext = sExt
+		case ".h":
+			fi.ext = hExt
+		default:
+			return fileInfo{}, fmt.Errorf("unrecognized file extension: %s", ext)
+		}
 	}
+
 	dir, base := filepath.Split(input)
 	// Check build constraints on non-cgo files.
 	// Skip cgo files, since they get rejected (due to leading '_') and won't
 	// have any build constraints anyway.
 	if strings.HasPrefix(base, "_cgo") {
-		m.isCgo = true
-		m.matched = true
+		fi.matched = true
 	} else {
 		match, err := bctx.MatchFile(dir, base)
 		if err != nil {
-			return m, err
+			return fi, err
 		}
-		m.matched = match
+		fi.matched = match
 	}
 	// if we don't need the package, and we are cgo, no need to parse the file
 	if !needPackage && bctx.CgoEnabled {
-		return m, nil
+		return fi, nil
 	}
 	// if it's not a go file, there is no package or cgo
 	if !strings.HasSuffix(input, ".go") {
-		return m, nil
+		return fi, nil
 	}
 
 	// read the file header
 	fset := token.NewFileSet()
 	parsed, err := parser.ParseFile(fset, input, nil, parser.ImportsOnly)
 	if err != nil {
-		return m, err
+		return fi, err
 	}
-	m.pkg = parsed.Name.String()
+	fi.pkg = parsed.Name.String()
 
 	for _, decl := range parsed.Decls {
 		d, ok := decl.(*ast.GenDecl)
@@ -112,21 +152,21 @@ func readGoMetadata(bctx build.Context, input string, needPackage bool) (*goMeta
 				log.Panicf("%s: invalid string `%s`", input, spec.Path.Value)
 			}
 			if imp == "C" {
-				m.isCgo = true
+				fi.isCgo = true
 				break
 			}
 		}
 	}
 	// matched if cgo is enabled or the file is not cgo
-	m.matched = m.matched && (bctx.CgoEnabled || !m.isCgo)
+	fi.matched = fi.matched && (bctx.CgoEnabled || !fi.isCgo)
 
 	for _, i := range parsed.Imports {
 		path, err := strconv.Unquote(i.Path.Value)
 		if err != nil {
-			return m, err
+			return fi, err
 		}
-		m.imports = append(m.imports, path)
+		fi.imports = append(fi.imports, path)
 	}
 
-	return m, nil
+	return fi, nil
 }

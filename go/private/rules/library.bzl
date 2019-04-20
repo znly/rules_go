@@ -13,6 +13,14 @@
 # limitations under the License.
 
 load(
+    "@io_bazel_rules_go//go/private:common.bzl",
+    "asm_exts",
+    "c_exts",
+    "cxx_exts",
+    "go_exts",
+    "hdr_exts",
+)
+load(
     "@io_bazel_rules_go//go/private:context.bzl",
     "go_context",
 )
@@ -52,13 +60,19 @@ go_library = go_rule(
     _go_library_impl,
     attrs = {
         "data": attr.label_list(allow_files = True),
-        "srcs": attr.label_list(allow_files = True),
+        "srcs": attr.label_list(allow_files = go_exts + asm_exts + hdr_exts + c_exts + cxx_exts),
         "deps": attr.label_list(providers = [GoLibrary]),
         "importpath": attr.string(),
         "importmap": attr.string(),
         "embed": attr.label_list(providers = [GoLibrary]),
         "gc_goopts": attr.string_list(),
         "x_defs": attr.string_dict(),
+        "cgo": attr.bool(),
+        "cdeps": attr.label_list(),
+        "cppopts": attr.string_list(),
+        "copts": attr.string_list(),
+        "cxxopts": attr.string_list(),
+        "clinkopts": attr.string_list(),
     },
 )
 """See go/core.rst#go_library for full documentation."""

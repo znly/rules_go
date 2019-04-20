@@ -45,6 +45,8 @@ func main() {
 		action = cgo
 	case "compile":
 		action = compile
+	case "compilepkg":
+		action = compilePkg
 	case "cover":
 		action = cover
 	case "filterbuildid":

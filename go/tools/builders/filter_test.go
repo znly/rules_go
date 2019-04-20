@@ -116,11 +116,16 @@ func TestTags(t *testing.T) {
 }
 
 func runTest(t *testing.T, bctx build.Context, inputs []string, expect []string) {
-	got, err := filterFiles(bctx, inputs)
+	build.Default = bctx
+	got, err := filterAndSplitFiles(inputs)
 	if err != nil {
 		t.Errorf("filter %v,%v,%v,%v failed: %v", bctx.GOOS, bctx.GOARCH, bctx.CgoEnabled, bctx.BuildTags, err)
 	}
-	if !reflect.DeepEqual(expect, got) {
+	gotGoFilenames := make([]string, len(got.goSrcs))
+	for i, src := range got.goSrcs {
+		gotGoFilenames[i] = src.filename
+	}
+	if !reflect.DeepEqual(expect, gotGoFilenames) {
 		t.Errorf("filter %v,%v,%v,%v: expect %v got %v", bctx.GOOS, bctx.GOARCH, bctx.CgoEnabled, bctx.BuildTags, expect, got)
 	}
 }

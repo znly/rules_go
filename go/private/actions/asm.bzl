@@ -33,24 +33,23 @@ def emit_asm(
     out_obj = go.declare_file(go, path = source.basename[:-2], ext = ".o")
     inputs = hdrs + go.sdk.tools + go.sdk.headers + go.stdlib.libs + [source]
 
-    args = go.builder_args(go, "asm")
-    args.add(source)
-    args.add("--")
-    includes = ([go.sdk.root_file.dirname + "/pkg/include"] +
-                [f.dirname for f in hdrs])
+    builder_args = go.builder_args(go, "asm")
+    builder_args.add("-o", out_obj)
+    builder_args.add(source)
 
     # TODO(#1463): use uniquify=True when available.
+    tool_args = go.tool_args(go)
+    includes = ([go.sdk.root_file.dirname + "/pkg/include"] +
+                [f.dirname for f in hdrs])
     includes = sorted({i: None for i in includes}.keys())
-    args.add_all(includes, before_each = "-I")
-    args.add("-trimpath", ".")
-    args.add("-o", out_obj)
-    args.add_all(link_mode_args(go.mode))
+    tool_args.add_all(includes, before_each = "-I")
+    tool_args.add_all(link_mode_args(go.mode))
     go.actions.run(
         inputs = inputs,
         outputs = [out_obj],
         mnemonic = "GoAsm",
         executable = go.toolchain._builder,
-        arguments = [args],
+        arguments = [builder_args, "--", tool_args],
         env = go.env,
     )
     return out_obj

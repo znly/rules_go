@@ -23,7 +23,10 @@ load(
 load(
     "@io_bazel_rules_go//go/private:common.bzl",
     "asm_exts",
+    "c_exts",
+    "cxx_exts",
     "go_exts",
+    "hdr_exts",
     "pkg_dir",
     "split_srcs",
 )
@@ -181,7 +184,7 @@ go_test = go_rule(
     _go_test_impl,
     attrs = {
         "data": attr.label_list(allow_files = True),
-        "srcs": attr.label_list(allow_files = go_exts + asm_exts),
+        "srcs": attr.label_list(allow_files = go_exts + asm_exts + hdr_exts + c_exts + cxx_exts),
         "deps": attr.label_list(
             providers = [GoLibrary],
             aspects = [go_archive_aspect],
@@ -236,6 +239,12 @@ go_test = go_rule(
         "rundir": attr.string(),
         "x_defs": attr.string_dict(),
         "linkmode": attr.string(default = LINKMODE_NORMAL),
+        "cgo": attr.bool(),
+        "cdeps": attr.label_list(),
+        "cppopts": attr.string_list(),
+        "copts": attr.string_list(),
+        "cxxopts": attr.string_list(),
+        "clinkopts": attr.string_list(),
         # Workaround for bazelbuild/bazel#6293. See comment in lcov_merger.sh.
         "_lcov_merger": attr.label(
             executable = True,

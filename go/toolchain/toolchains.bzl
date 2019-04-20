@@ -1,9 +1,4 @@
 load(
-    "//go/private:go_toolchain.bzl",
-    "generate_toolchains",
-    "go_toolchain",
-)
-load(
     "//go/private:sdk.bzl",
     "go_download_sdk",
     "go_host_sdk",
@@ -399,8 +394,3 @@ def declare_constraints():
                 ":" + goarch,
             ],
         )
-
-def declare_toolchains(host, sdk, builder):
-    # Use the final dictionaries to create all the toolchains
-    for toolchain in generate_toolchains(host, sdk, builder):
-        go_toolchain(**toolchain)

@@ -29,7 +29,16 @@ load(
     "@io_bazel_rules_go//go/private:providers.bzl",
     "GoArchive",
     "GoArchiveData",
+    "effective_importpath_pkgpath",
     "get_archive",
+)
+load(
+    "@io_bazel_rules_go//go/private:rules/cgo.bzl",
+    "cgo_configure",
+)
+load(
+    "@io_bazel_rules_go//go/private:actions/compilepkg.bzl",
+    "emit_compilepkg",
 )
 
 def emit_archive(go, source = None):
@@ -38,17 +47,15 @@ def emit_archive(go, source = None):
     if source == None:
         fail("source is a required parameter")
 
-    covered = bool(go.cover and go.coverdata and source.cover)
-    if covered:
-        source = go.cover(go, source)
     split = split_srcs(source.srcs)
     lib_name = source.library.importmap + ".a"
     out_lib = go.declare_file(go, path = lib_name)
-    out_export = None
     if go.nogo:
         # TODO(#1847): write nogo data into a new section in the .a file instead
         # of writing a separate file.
         out_export = go.declare_file(go, path = lib_name[:-len(".a")] + ".x")
+    else:
+        out_export = None
     searchpath = out_lib.path[:-len(lib_name)]
     testfilter = getattr(source.library, "testfilter", None)
 
@@ -59,57 +66,117 @@ def emit_archive(go, source = None):
         runfiles = runfiles.merge(a.runfiles)
         if a.source.mode != go.mode:
             fail("Archive mode does not match {} is {} expected {}".format(a.data.label, mode_string(a.source.mode), mode_string(go.mode)))
-    if covered:
-        direct.append(go.coverdata)
 
-    asmhdr = None
-    if split.asm:
-        asmhdr = go.declare_file(go, "go_asm.h")
+    if not source.cgo_archives:
+        # TODO(jayconrod): We still need to support the legacy cgo path when
+        # Objective C sources are present, since the Objective C toolchain
+        # isn't exposed to Starlark. The legacy path runs cgo as a separate
+        # action, then builds generated code with cc_library / objc_library.
+        # A go_library compiles generated Go code and packs the other
+        # objects from cgo_archives. "cgo_archives" is not supported on
+        # the new path because we do all that in one action.
 
-    if len(split.asm) == 0 and not source.cgo_archives:
-        go.compile(
+        # TODO(jayconrod): do we need to do full Bourne tokenization here?
+        cppopts = [f for fs in source.cppopts for f in fs.split(" ")]
+        copts = [f for fs in source.copts for f in fs.split(" ")]
+        cxxopts = [f for fs in source.cxxopts for f in fs.split(" ")]
+        clinkopts = [f for fs in source.clinkopts for f in fs.split(" ")]
+
+        cgo_inputs = depset()
+        cgo_deps = depset()
+        if source.cgo:
+            cgo = cgo_configure(
+                go,
+                srcs = split.go + split.c + split.asm + split.cxx + split.headers,
+                cdeps = source.cdeps,
+                cppopts = cppopts,
+                copts = copts,
+                cxxopts = cxxopts,
+                clinkopts = clinkopts,
+            )
+            runfiles = runfiles.merge(cgo.runfiles)
+            cgo_inputs = cgo.inputs
+            cgo_deps = cgo.deps
+            cppopts = cgo.cppopts
+            copts = cgo.copts
+            cxxopts = cgo.cxxopts
+            clinkopts = cgo.clinkopts
+
+        emit_compilepkg(
             go,
-            sources = split.go,
-            importpath = source.library.importmap,
+            sources = split.go + split.c + split.asm + split.cxx + split.headers,
+            cover = source.cover,
+            importpath = effective_importpath_pkgpath(source.library)[0],
+            importmap = source.library.importmap,
             archives = direct,
             out_lib = out_lib,
             out_export = out_export,
             gc_goopts = source.gc_goopts,
+            cgo = source.cgo,
+            cgo_inputs = cgo_inputs,
+            cppopts = cppopts,
+            copts = copts,
+            cxxopts = cxxopts,
+            clinkopts = clinkopts,
+            cgo_archives = source.cgo_archives,
             testfilter = testfilter,
         )
     else:
-        # Assembly files must be passed to the compiler as sources. We need
-        # to run the assembler to produce a symabis file that gets passed to
-        # the compiler. The compiler builder does all this so it doesn't
-        # need to be a separate action (but individual .o files are still
-        # produced with separate actions).
-        partial_lib = go.declare_file(go, path = lib_name + "~partial", ext = ".a")
-        go.compile(
-            go,
-            sources = split.go + split.asm + split.headers,
-            importpath = source.library.importmap,
-            archives = direct,
-            out_lib = partial_lib,
-            out_export = out_export,
-            gc_goopts = source.gc_goopts,
-            testfilter = testfilter,
-            asmhdr = asmhdr,
-        )
+        cgo_deps = source.cgo_deps
 
-        # include other .s as inputs, since they may be #included.
-        # This may result in multiple copies of symbols defined in included
-        # files, but go build allows it, so we do, too.
-        asm_headers = split.headers + split.asm + [asmhdr]
-        extra_objects = []
-        for src in split.asm:
-            extra_objects.append(go.asm(go, source = src, hdrs = asm_headers))
-        go.pack(
-            go,
-            in_lib = partial_lib,
-            out_lib = out_lib,
-            objects = extra_objects,
-            archives = source.cgo_archives,
-        )
+        if bool(go.cover and go.coverdata and source.cover):
+            source = go.cover(go, source)
+            direct.append(go.coverdata)
+
+        asmhdr = None
+        if split.asm:
+            asmhdr = go.declare_file(go, "go_asm.h")
+
+        if len(split.asm) == 0 and not source.cgo_archives:
+            go.compile(
+                go,
+                sources = split.go,
+                importpath = source.library.importmap,
+                archives = direct,
+                out_lib = out_lib,
+                out_export = out_export,
+                gc_goopts = source.gc_goopts,
+                testfilter = testfilter,
+            )
+        else:
+            # Assembly files must be passed to the compiler as sources. We need
+            # to run the assembler to produce a symabis file that gets passed to
+            # the compiler. The compiler builder does all this so it doesn't
+            # need to be a separate action (but individual .o files are still
+            # produced with separate actions).
+            partial_lib = go.declare_file(go, path = lib_name + "~partial", ext = ".a")
+            go.compile(
+                go,
+                sources = split.go + split.asm + split.headers,
+                importpath = source.library.importmap,
+                archives = direct,
+                out_lib = partial_lib,
+                out_export = out_export,
+                gc_goopts = source.gc_goopts,
+                testfilter = testfilter,
+                asmhdr = asmhdr,
+            )
+
+            # include other .s as inputs, since they may be #included.
+            # This may result in multiple copies of symbols defined in included
+            # files, but go build allows it, so we do, too.
+            asm_headers = split.headers + split.asm + [asmhdr]
+            extra_objects = []
+            for src in split.asm:
+                extra_objects.append(go.asm(go, source = src, hdrs = asm_headers))
+            go.pack(
+                go,
+                in_lib = partial_lib,
+                out_lib = out_lib,
+                objects = extra_objects,
+                archives = source.cgo_archives,
+            )
+
     data = GoArchiveData(
         name = source.library.name,
         label = source.library.label,
@@ -134,7 +201,7 @@ def emit_archive(go, source = None):
         libs = sets.union([out_lib], *[a.libs for a in direct]),
         transitive = sets.union([data], *[a.transitive for a in direct]),
         x_defs = x_defs,
-        cgo_deps = sets.union(source.cgo_deps, *[a.cgo_deps for a in direct]),
+        cgo_deps = sets.union(cgo_deps, *[a.cgo_deps for a in direct]),
         cgo_exports = sets.union(source.cgo_exports, *[a.cgo_exports for a in direct]),
         runfiles = runfiles,
         mode = go.mode,

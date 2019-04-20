@@ -19,7 +19,10 @@ load(
 load(
     "@io_bazel_rules_go//go/private:common.bzl",
     "asm_exts",
+    "c_exts",
+    "cxx_exts",
     "go_exts",
+    "hdr_exts",
 )
 load(
     "@io_bazel_rules_go//go/private:rules/aspect.bzl",
@@ -52,12 +55,18 @@ load(
 _SHARED_ATTRS = {
     "basename": attr.string(),
     "data": attr.label_list(allow_files = True),
-    "srcs": attr.label_list(allow_files = go_exts + asm_exts),
+    "srcs": attr.label_list(allow_files = go_exts + asm_exts + hdr_exts + c_exts + cxx_exts),
     "gc_goopts": attr.string_list(),
     "gc_linkopts": attr.string_list(),
     "x_defs": attr.string_dict(),
     "linkmode": attr.string(values = LINKMODES, default = LINKMODE_NORMAL),
     "out": attr.string(),
+    "cgo": attr.bool(),
+    "cdeps": attr.label_list(),
+    "cppopts": attr.string_list(),
+    "copts": attr.string_list(),
+    "cxxopts": attr.string_list(),
+    "clinkopts": attr.string_list(),
 }
 
 def _go_binary_impl(ctx):

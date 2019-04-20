@@ -15,7 +15,11 @@
 Toolchain rules used by go.
 """
 
-load("@io_bazel_rules_go//go/platform:list.bzl", "GOOS_GOARCH")
+load(
+    "@io_bazel_rules_go//go/platform:list.bzl",
+    "GOOS_GOARCH",
+    "generate_toolchain_names",
+)
 load("@io_bazel_rules_go//go/private:providers.bzl", "GoSDK")
 load("@io_bazel_rules_go//go/private:actions/archive.bzl", "emit_archive")
 load("@io_bazel_rules_go//go/private:actions/asm.bzl", "emit_asm")
@@ -150,9 +154,7 @@ def generate_toolchains(host, sdk, builder):
         ))
     return toolchains
 
-def generate_toolchain_names():
-    # Keep in sync with generate_toolchains
-    return [
-        "go_{}_{}".format(target_goos, target_goarch)
-        for target_goos, target_goarch in GOOS_GOARCH
-    ]
+def declare_toolchains(host, sdk, builder):
+    # Use the final dictionaries to create all the toolchains
+    for toolchain in generate_toolchains(host, sdk, builder):
+        go_toolchain(**toolchain)

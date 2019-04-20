@@ -75,10 +75,10 @@ def _objc(name, kwargs):
     return objcopts
 
 def _cgo(name, kwargs):
-    cgo = kwargs.pop("cgo", False)
-    if not cgo:
+    if not kwargs.get("cgo", False) or not kwargs.get("objc", False):
         return
 
+    kwargs.pop("cgo")
     linkmode = kwargs.get("linkmode", None)
     cgo_attrs = {"name": name}
     for key, default in _CGO_ATTRS.items():

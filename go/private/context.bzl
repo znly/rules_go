@@ -155,6 +155,14 @@ def _merge_embed(source, embed):
     source["x_defs"].update(s.x_defs)
     source["gc_goopts"] = source["gc_goopts"] + s.gc_goopts
     source["runfiles"] = source["runfiles"].merge(s.runfiles)
+    if s.cgo and source["cgo"]:
+        fail("multiple libraries with cgo enabled")
+    source["cgo"] = source["cgo"] or s.cgo
+    source["cdeps"] = source["cdeps"] or s.cdeps
+    source["cppopts"] = source["cppopts"] or s.cppopts
+    source["copts"] = source["copts"] or s.copts
+    source["cxxopts"] = source["cxxopts"] or s.cxxopts
+    source["clinkopts"] = source["clinkopts"] or s.clinkopts
     source["cgo_deps"] = source["cgo_deps"] + s.cgo_deps
     source["cgo_exports"] = source["cgo_exports"] + s.cgo_exports
     if s.cgo_archives:
@@ -200,6 +208,12 @@ def _library_to_source(go, attr, library, coverage_instrumented):
         "deps": getattr(attr, "deps", []),
         "gc_goopts": getattr(attr, "gc_goopts", []),
         "runfiles": _collect_runfiles(go, getattr(attr, "data", []), getattr(attr, "deps", [])),
+        "cgo": getattr(attr, "cgo", False),
+        "cdeps": getattr(attr, "cdeps", []),
+        "cppopts": getattr(attr, "cppopts", []),
+        "copts": getattr(attr, "copts", []),
+        "cxxopts": getattr(attr, "cxxopts", []),
+        "clinkopts": getattr(attr, "clinkopts", []),
         "cgo_archives": [],
         "cgo_deps": [],
         "cgo_exports": [],
@@ -218,6 +232,15 @@ def _library_to_source(go, attr, library, coverage_instrumented):
             k = "{}.{}".format(library.importmap, k)
         x_defs[k] = v
     source["x_defs"] = x_defs
+    if not source["cgo"]:
+        for k in ("cdeps", "cppopts", "copts", "cxxopts", "clinkopts"):
+            if getattr(attr, k, None):
+                fail(k + " set without cgo = True")
+        for f in source["srcs"]:
+            # This check won't report directory sources that contain C/C++
+            # sources. compilepkg will catch these instead.
+            if f.extension in ("c", "cc", "cxx", "cpp", "hh", "hpp", "hxx"):
+                fail("source {} has C/C++ extension, but cgo was not enabled (set 'cgo = True')".format(f.path))
     if library.resolve:
         library.resolve(go, attr, source, _merge_embed)
     return GoSource(**source)

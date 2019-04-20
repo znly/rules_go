@@ -31,3 +31,10 @@ race_test
 
 Checks that cgo code in a binary with ``race = "on"`` is compiled in race mode.
 Verifies #1592.
+
+tag_test
+--------
+
+Checks that sources with ``// +build cgo`` are built when cgo is enabled
+(whether or not ``cgo = True`` is set), and sources with ``// +build !cgo``
+are only built in pure mode.

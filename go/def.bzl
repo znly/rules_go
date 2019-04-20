@@ -31,6 +31,7 @@ load(
 )
 load(
     "@io_bazel_rules_go//go/private:go_toolchain.bzl",
+    _declare_toolchains = "declare_toolchains",
     _go_toolchain = "go_toolchain",
 )
 load(
@@ -68,12 +69,13 @@ load(
 # check this to determine compatibility.
 RULES_GO_VERSION = "0.18.0"
 
+declare_toolchains = _declare_toolchains
 go_context = _go_context
-go_tool_library = _go_tool_library
-nogo = _nogo
 go_embed_data = _go_embed_data
 go_sdk = _go_sdk
+go_tool_library = _go_tool_library
 go_toolchain = _go_toolchain
+nogo = _nogo
 
 GoLibrary = _GoLibrary
 """See go/providers.rst#GoLibrary for full documentation."""

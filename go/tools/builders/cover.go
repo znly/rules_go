@@ -34,11 +34,12 @@ func cover(args []string) error {
 		return err
 	}
 	flags := flag.NewFlagSet("cover", flag.ExitOnError)
-	var coverSrc, coverVar, origSrc, srcName string
+	var coverSrc, coverVar, origSrc, srcName, mode string
 	flags.StringVar(&coverSrc, "o", "", "coverage output file")
 	flags.StringVar(&coverVar, "var", "", "name of cover variable")
 	flags.StringVar(&origSrc, "src", "", "original source file")
 	flags.StringVar(&srcName, "srcname", "", "source name printed in coverage data")
+	flags.StringVar(&mode, "mode", "set", "coverage mode to use")
 	goenv := envFlags(flags)
 	if err := flags.Parse(args); err != nil {
 		return err
@@ -59,14 +60,19 @@ func cover(args []string) error {
 		srcName = origSrc
 	}
 
-	goargs := goenv.goTool("cover", "-var", coverVar, "-o", coverSrc)
-	goargs = append(goargs, flags.Args()...)
-	goargs = append(goargs, origSrc)
+	return instrumentForCoverage(goenv, origSrc, srcName, coverVar, mode, coverSrc)
+}
+
+// instrumentForCoverage runs "go tool cover" on a source file to produce
+// a coverage-instrumented version of the file. It also registers the file
+// with the coverdata package.
+func instrumentForCoverage(goenv *env, srcPath, srcName, coverVar, mode, outPath string) error {
+	goargs := goenv.goTool("cover", "-var", coverVar, "-mode", mode, "-o", outPath, srcPath)
 	if err := goenv.runCommand(goargs); err != nil {
 		return err
 	}
 
-	return registerCoverage(coverSrc, coverVar, srcName)
+	return registerCoverage(outPath, coverVar, srcName)
 }
 
 // registerCoverage modifies coverSrc, the output file from go tool cover. It

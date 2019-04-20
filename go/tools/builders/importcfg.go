@@ -31,6 +31,9 @@ type archive struct {
 	label, importPath, packagePath, aFile, xFile string
 }
 
+// buildImportcfgFileForCompile writes an importcfg file to be consumed by the
+// compiler. The file is constructed from direct dependencies and std imports.
+// The caller is responsible for deleting the importcfg file.
 func buildImportcfgFileForCompile(archives []archive, stdImports []string, installSuffix, dir string) (string, error) {
 	buf := &bytes.Buffer{}
 	goroot, ok := os.LookupEnv("GOROOT")

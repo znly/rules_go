@@ -154,9 +154,38 @@ method. In general, only rules_go should need to build or handle these.
 +--------------------------------+-----------------------------------------------------------------+
 | The set of files needed by code in these sources at runtime.                                     |
 +--------------------------------+-----------------------------------------------------------------+
+| :param:`cgo`                   | :type:`bool`                                                    |
++--------------------------------+-----------------------------------------------------------------+
+| True if the library may contain cgo sources or C/C++/ObjC sources.                               |
+| If true and cgo is enabled, cgo sources will be processed with cgo, and                          |
+| C/C++/ObjC will be compiled with the appropriate toolchain and packed into                       |
+| the final archive. If true and cgo is disabled, cgo sources are filtered                         |
+| out, and sources with ``// +build !cgo`` are included.                                           |
++--------------------------------+-----------------------------------------------------------------+
+| :param:`cdeps`                 | :type:`list of Target`                                          |
++--------------------------------+-----------------------------------------------------------------+
+| List of ``cc_library`` and ``objc_library`` targets this library depends on.                     |
++--------------------------------+-----------------------------------------------------------------+
+| :param:`cppopts`               | :type:`list of string`                                          |
++--------------------------------+-----------------------------------------------------------------+
+| List of additional flags to pass to the C preprocessor when invoking the                         |
+| C/C++/ObjC compilers.                                                                            |
++--------------------------------+-----------------------------------------------------------------+
+| :param:`copts`                 | :type:`list of string`                                          |
++--------------------------------+-----------------------------------------------------------------+
+| List of additional flags to pass to the C compiler.                                              |
++--------------------------------+-----------------------------------------------------------------+
+| :param:`cxxopts`               | :type:`list of string`                                          |
++--------------------------------+-----------------------------------------------------------------+
+| List of additional flags to pass to the C++ compiler.                                            |
++--------------------------------+-----------------------------------------------------------------+
+| :param:`clinkopts`             | :type:`list of string`                                          |
++--------------------------------+-----------------------------------------------------------------+
+| List of additional flags to pass to the external linker.                                         |
++--------------------------------+-----------------------------------------------------------------+
 | :param:`cgo_deps`              | :type:`list of File`                                            |
 +--------------------------------+-----------------------------------------------------------------+
-| The direct cgo dependencies of this library.                                                     |
+| Deprecated; use ``cdeps`` instead. The direct cgo dependencies of this library.                  |
 +--------------------------------+-----------------------------------------------------------------+
 | :param:`cgo_exports`           | :type:`list of File`                                            |
 +--------------------------------+-----------------------------------------------------------------+

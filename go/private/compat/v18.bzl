@@ -14,6 +14,8 @@
 
 # Compatibility for --incompatible_disable_legacy_cc_provider
 
+load("@io_bazel_rules_go//go/private:common.bzl", "as_iterable")
+
 CC_PROVIDER_NAME = "cc"
 
 def has_cc(target):
@@ -23,25 +25,25 @@ def cc_transitive_headers(target):
     return target.cc.transitive_headers
 
 def cc_defines(target):
-    return target.cc.defines
+    return as_iterable(target.cc.defines)
 
 def cc_system_includes(target):
-    return target.cc.system_include_directories
+    return as_iterable(target.cc.system_include_directories)
 
 def cc_includes(target):
-    return target.cc.include_directories
+    return as_iterable(target.cc.include_directories)
 
 def cc_quote_includes(target):
-    return target.cc.quote_include_directories
+    return as_iterable(target.cc.quote_include_directories)
 
 def cc_link_flags(target):
-    return target.cc.link_flags
+    return as_iterable(target.cc.link_flags)
 
 def cc_libs(target):
-    return target.cc.libs
+    return as_iterable(target.cc.libs)
 
 def cc_compile_flags(target):
-    return target.cc.compile_flags
+    return as_iterable(target.cc.compile_flags)
 
 # Compatibility for --incompatible_disable_legacy_proto_provider
 

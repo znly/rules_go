@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -53,6 +54,11 @@ type env struct {
 
 	// verbose indicates whether subprocess command lines should be printed.
 	verbose bool
+
+	// workDirPath is a temporary work directory. It is created lazily.
+	workDirPath string
+
+	shouldPreserveWorkDir bool
 }
 
 // envFlags registers flags common to multiple builders and returns an env
@@ -63,6 +69,7 @@ func envFlags(flags *flag.FlagSet) *env {
 	flags.Var(&tagFlag{}, "tags", "List of build tags considered true.")
 	flags.StringVar(&env.installSuffix, "installsuffix", "", "Standard library under GOROOT/pkg")
 	flags.BoolVar(&env.verbose, "v", false, "Whether subprocess command lines should be printed")
+	flags.BoolVar(&env.shouldPreserveWorkDir, "work", false, "if true, the temporary work directory will be preserved")
 	return env
 }
 
@@ -73,6 +80,29 @@ func (e *env) checkFlags() error {
 		return errors.New("-sdk was not set")
 	}
 	return nil
+}
+
+// workDir returns a path to a temporary work directory. The same directory
+// is returned on multiple calls. The caller is responsible for cleaning
+// up the work directory by calling cleanup.
+func (e *env) workDir() (path string, cleanup func(), err error) {
+	if e.workDirPath != "" {
+		return e.workDirPath, func() {}, nil
+	}
+	// Keep the stem "rules_go_work" in sync with reproducible_binary_test.go.
+	e.workDirPath, err = ioutil.TempDir("", "rules_go_work-")
+	if err != nil {
+		return "", func() {}, err
+	}
+	if e.verbose {
+		log.Printf("WORK=%s\n", e.workDirPath)
+	}
+	if e.shouldPreserveWorkDir {
+		cleanup = func() {}
+	} else {
+		cleanup = func() { os.RemoveAll(e.workDirPath) }
+	}
+	return e.workDirPath, cleanup, nil
 }
 
 // goTool returns a slice containing the path to an executable at

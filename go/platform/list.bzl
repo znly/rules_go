@@ -115,3 +115,10 @@ def declare_config_settings():
                 "//go/toolchain:" + goarch,
             ],
         )
+
+def generate_toolchain_names():
+    # Keep in sync with generate_toolchains
+    return [
+        "go_{}_{}".format(target_goos, target_goarch)
+        for target_goos, target_goarch in GOOS_GOARCH
+    ]

@@ -80,6 +80,16 @@ func TestSandboxPath(t *testing.T) {
 	}
 }
 
+// TestWorkDir checks that the builder's work directory does not appear
+// in strings from the binary.
+func TestWorkDir(t *testing.T) {
+	for _, s := range allStrings {
+		if bytes.Contains(s, []byte("rules_go_work")) {
+			t.Errorf("binary contains work directory: %s", s)
+		}
+	}
+}
+
 // TestUserNameAndHome checks the user name and home directory do not
 // appear in strings from the binary.
 func TestUserNameAndHome(t *testing.T) {

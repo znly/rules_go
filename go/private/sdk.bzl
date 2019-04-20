@@ -18,9 +18,8 @@ load(
     "executable_path",
 )
 load(
-    "@io_bazel_rules_go//go/private:go_toolchain.bzl",
+    "@io_bazel_rules_go//go/platform:list.bzl",
     "generate_toolchain_names",
-    "generate_toolchains",
 )
 
 def _go_host_sdk_impl(ctx):
