@@ -132,6 +132,41 @@ def _remote_sdk(ctx, urls, strip_prefix, sha256):
             stripPrefix = strip_prefix,
             sha256 = sha256,
         )
+    _patch_nix(ctx)
+
+_NIX_DYLD_TPL = """\
+#!/bin/sh
+exec {dyld} {binary} ${{@}}
+"""
+
+def _patch_nix(ctx):
+    """
+    Generates wrappers for the Go SDK binaries to use the correct interpreter
+    on Nix/NixOS.
+    """
+    # Are we on Nix/NixOS? Check via $NIX_CC
+    nix_cc = ctx.os.environ.get("NIX_CC", None)
+    if not nix_cc:
+        return
+    # Get the dyld
+    res = ctx.execute(["cat", "%s/nix-support/dynamic-linker" % nix_cc])
+    if res.return_code:
+        fail("error reading the dynamic linker:\n" + res.stdout + res.stderr)
+    dyld = res.stdout.rstrip()
+    # Generate the wrappers. Unfortunately we can't use patchelf to do that
+    # until patchelf 0.10 is in NixOS. So manually invoke the dyld via wrappers
+    # instead.
+    # See https://github.com/NixOS/patchelf/issues/66
+    for binary in ctx.path("bin").readdir():
+        # Does the binary needs a wrapper?
+        if ctx.execute(["patchelf", "--print-interpreter", binary]).return_code:
+            continue
+        orig = "%s.1" % binary
+        ctx.execute(["mv", binary, orig])
+        ctx.file(binary, _NIX_DYLD_TPL.format(
+            dyld = dyld,
+            binary = orig,
+        ), executable = True)
 
 def _local_sdk(ctx, path):
     for entry in ["src", "pkg", "bin"]:
