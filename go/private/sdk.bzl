@@ -134,9 +134,9 @@ def _remote_sdk(ctx, urls, strip_prefix, sha256):
         )
     _patch_nix(ctx)
 
-_NIX_DYLD_TPL = """\
+_NIX_DYLD = """\
 #!/bin/sh
-exec {dyld} {binary} ${{@}}
+exec {dyld} ${{0}}.1 ${{@}}
 """
 
 def _patch_nix(ctx):
@@ -157,16 +157,15 @@ def _patch_nix(ctx):
     # until patchelf 0.10 is in NixOS. So manually invoke the dyld via wrappers
     # instead.
     # See https://github.com/NixOS/patchelf/issues/66
+    ctx.file("bin/dyld.sh", _NIX_DYLD.format(
+        dyld = dyld,
+    ), executable = True)
     for binary in ctx.path("bin").readdir():
         # Does the binary needs a wrapper?
         if ctx.execute(["patchelf", "--print-interpreter", binary]).return_code:
             continue
-        orig = "%s.1" % binary
-        ctx.execute(["mv", binary, orig])
-        ctx.file(binary, _NIX_DYLD_TPL.format(
-            dyld = dyld,
-            binary = orig,
-        ), executable = True)
+        ctx.execute(["mv", binary, "%s.1" % binary])
+        ctx.symlink("bin/dyld.sh", binary)
 
 def _local_sdk(ctx, path):
     for entry in ["src", "pkg", "bin"]:
