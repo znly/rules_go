@@ -277,14 +277,16 @@ func compileCSources(goenv *env, cSrcs, cxxSrcs, sSrcs, hSrcs []string, cc strin
 }
 
 func cCompile(goenv *env, src, cc string, cFlags []string, out string) error {
-	args := []string{cc, "-c", src, "-o", out}
+	args := []string{cc}
 	args = append(args, cFlags...)
+	args = append(args, "-c", src, "-o", out)
 	return goenv.runCommand(args)
 }
 
 func cxxCompile(goenv *env, src, cc string, cxxFlags []string, out string) error {
-	args := []string{cc, "-x", "c++", "-c", src, "-o", out}
+	args := []string{cc, "-x", "c++"}
 	args = append(args, cxxFlags...)
+	args = append(args, "-c", src, "-o", out)
 	return goenv.runCommand(args)
 }
 
