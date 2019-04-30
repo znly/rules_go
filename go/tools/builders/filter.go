@@ -100,7 +100,7 @@ func readFileInfo(bctx build.Context, input string, needPackage bool) (fileInfo,
 			fi.ext = mExt
 		case ".s":
 			fi.ext = sExt
-		case ".h":
+		case ".h", ".hh", ".hpp", ".hxx":
 			fi.ext = hExt
 		default:
 			return fileInfo{}, fmt.Errorf("unrecognized file extension: %s", ext)
