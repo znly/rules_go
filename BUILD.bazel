@@ -68,6 +68,10 @@ go_context_data(
         "@io_bazel_rules_go//go/private:strip-sometimes": "sometimes",
         "@io_bazel_rules_go//go/private:strip-never": "never",
     }),
+    stamp = select({
+        "@io_bazel_rules_go//go/private:stamp": True,
+        "//conditions:default": False,
+    }),
     visibility = ["//visibility:public"],
 )
 

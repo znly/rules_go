@@ -1,13 +1,6 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_test")
+load("@io_bazel_rules_go//go/tools/bazel_testing:def.bzl", "go_bazel_test")
 
-go_test(
-    name = "stamp_with_x_defs",
-    size = "small",
-    srcs = ["stamped_bin_test.go"],
-    x_defs = {
-        "github.com/bazelbuild/rules_go/examples/stamped_bin/stamp.BUILD_TIMESTAMP": "{BUILD_TIMESTAMP}",
-        "github.com/bazelbuild/rules_go/examples/stamped_bin/stamp.PassIfEmpty": "",
-        "github.com/bazelbuild/rules_go/examples/stamped_bin/stamp.XdefInvalid": "{Undefined_Var}",  # undefined should leave the var alone
-    },
-    deps = ["//tests/legacy/examples/stamped_bin/stamp:go_default_library"],
+go_bazel_test(
+    name = "stamped_test",
+    srcs = ["stamped_test.go"],
 )

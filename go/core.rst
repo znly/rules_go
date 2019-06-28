@@ -61,7 +61,8 @@ These mappings are collected up across the entire transitive dependancies of a
 binary. This means you can set a value using :param:`x_defs` in a
 ``go_library``, and any binary that links that library will be stamped with that
 value. You can also override stamp values from libraries using :param:`x_defs`
-on the ``go_binary`` rule if needed.
+on the ``go_binary`` rule if needed. The ``--[no]stamp`` option controls whether 
+stamping of workspace variables is enabled.
 
 Example
 ^^^^^^^
@@ -128,7 +129,7 @@ argument on the command line:
 
 .. code:: bash
 
-    $ bazel build --workspace_status_command=./status.sh //:cmd
+    $ bazel build --stamp --workspace_status_command=./status.sh //:cmd
 
 Embedding
 ~~~~~~~~~
@@ -628,7 +629,7 @@ equivalent of ``go test ./...``), run
 ::
 
   bazel test --test_output=errors //...
-  
+
 To run a Go benchmark test, run
 
 ::

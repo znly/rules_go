@@ -128,7 +128,7 @@ def emit_link(
     # saving them to process through stamping support.
     stamp_x_defs = False
     for k, v in archive.x_defs.items():
-        if v.startswith("{") and v.endswith("}"):
+        if go.stamp and v.startswith("{") and v.endswith("}"):
             builder_args.add("-Xstamp", "%s=%s" % (k, v[1:-1]))
             stamp_x_defs = True
         else:

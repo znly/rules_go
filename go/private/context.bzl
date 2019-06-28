@@ -407,6 +407,7 @@ def go_context(ctx, attr = None):
         coverage_instrumented = ctx.coverage_instrumented(),
         env = env,
         tags = tags,
+        stamp = context_data.stamp,
         # Action generators
         archive = toolchain.actions.archive,
         asm = toolchain.actions.asm,
@@ -472,6 +473,7 @@ def _go_context_data_impl(ctx):
     env["PATH"] = ctx.configuration.host_path_separator.join(paths)
 
     return [_GoContextData(
+        stamp = ctx.attr.stamp,
         strip = ctx.attr.strip,
         crosstool = crosstool,
         tags = tags,
@@ -482,6 +484,7 @@ def _go_context_data_impl(ctx):
 go_context_data = rule(
     _go_context_data_impl,
     attrs = {
+        "stamp": attr.bool(mandatory = True),
         "strip": attr.string(mandatory = True),
     },
     toolchains = ["@io_bazel_rules_go//go:toolchain"],
