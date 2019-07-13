@@ -85,6 +85,8 @@ def emit_archive(go, source = None):
         cxxopts = [f for fs in source.cxxopts for f in fs.split(" ")]
         clinkopts = [f for fs in source.clinkopts for f in fs.split(" ")]
 
+        importpath, _ = effective_importpath_pkgpath(source.library)
+        importmap = "main" if source.library.is_main else source.library.importmap
         if source.cgo and not go.mode.pure:
             cgo = cgo_configure(
                 go,
@@ -103,8 +105,8 @@ def emit_archive(go, source = None):
                 go,
                 sources = split.go + split.c + split.asm + split.cxx + split.objc + split.headers,
                 cover = source.cover,
-                importpath = effective_importpath_pkgpath(source.library)[0],
-                importmap = source.library.importmap,
+                importpath = importpath,
+                importmap = importmap,
                 archives = direct,
                 out_lib = out_lib,
                 out_export = out_export,
@@ -127,8 +129,8 @@ def emit_archive(go, source = None):
                 go,
                 sources = split.go + split.c + split.asm + split.cxx + split.objc + split.headers,
                 cover = source.cover,
-                importpath = effective_importpath_pkgpath(source.library)[0],
-                importmap = source.library.importmap,
+                importpath = importpath,
+                importmap = importmap,
                 archives = direct,
                 out_lib = out_lib,
                 out_export = out_export,
@@ -152,7 +154,7 @@ def emit_archive(go, source = None):
             go.compile(
                 go,
                 sources = split.go,
-                importpath = source.library.importmap,
+                importpath = importmap,
                 archives = direct,
                 out_lib = out_lib,
                 out_export = out_export,
@@ -169,7 +171,7 @@ def emit_archive(go, source = None):
             go.compile(
                 go,
                 sources = split.go + split.asm + split.headers,
-                importpath = source.library.importmap,
+                importpath = importmap,
                 archives = direct,
                 out_lib = partial_lib,
                 out_export = out_export,

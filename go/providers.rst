@@ -100,6 +100,12 @@ an input to the `library_to_source`_ helper method, which produces GoSource_.
 | A function called by `library_to_source`_ that can be used to resolve this                       |
 | library to a mode-specific GoSource_.                                                            |
 +--------------------------------+-----------------------------------------------------------------+
+| :param:`is_main`               | :type:`bool`                                                    |
++--------------------------------+-----------------------------------------------------------------+
+| Indicates whether the library should be compiled as a `main` package.                            |
+| `main` packages may have arbitrary `importpath` and `importmap` values,                          |
+| but the compiler and linker must see them as `main`.                                             |
++--------------------------------+-----------------------------------------------------------------+
 
 GoSource
 ~~~~~~~~
