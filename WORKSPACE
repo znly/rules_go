@@ -62,12 +62,13 @@ load("@bazel_skylib//:workspace.bzl", "bazel_skylib_workspace")
 
 bazel_skylib_workspace()
 
-git_repository(
+http_archive(
     name = "bazel_gazelle",
-    # master as of 2019-07-08
-    commit = "7c3b97b8e8bf4699353fcdf7437c195e2cdcef3b",
-    remote = "https://github.com/bazelbuild/bazel-gazelle",
-    shallow_since = "1562699102 -0400",
+    urls = [
+        "https://storage.googleapis.com/bazel-mirror/github.com/bazelbuild/bazel-gazelle/releases/download/0.18.1/bazel-gazelle-0.18.1.tar.gz",
+        "https://github.com/bazelbuild/bazel-gazelle/releases/download/0.18.1/bazel-gazelle-0.18.1.tar.gz",
+    ],
+    sha256 = "be9296bfd64882e3c08e3283c58fcb461fa6dd3c171764fcc4cf322f60615a9b",
 )
 
 load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
