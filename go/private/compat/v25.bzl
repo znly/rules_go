@@ -13,6 +13,10 @@
 # limitations under the License.
 
 load("@io_bazel_rules_go//go/private:common.bzl", "as_iterable")
+load(
+    "@bazel_tools//tools/cpp:toolchain_utils.bzl",
+    "find_cpp_toolchain",
+)
 
 # Compatibility for --incompatible_disable_legacy_cc_provider
 
@@ -79,6 +83,9 @@ def cc_compile_flags(target):
         options.append("-iquote {}".format(quote_include))
 
     return options
+
+def cc_toolchain_all_files(ctx):
+    return find_cpp_toolchain(ctx).all_files.to_list()
 
 # Compatibility for --incompatible_disable_legacy_proto_provider
 

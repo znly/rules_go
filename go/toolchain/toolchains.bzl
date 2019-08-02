@@ -78,11 +78,6 @@ def declare_constraints():
     )
 
     native.constraint_value(
-        name = "cgo_on",
-        constraint_setting = ":cgo_constraint",
-    )
-
-    native.constraint_value(
         name = "cgo_off",
         constraint_setting = ":cgo_constraint",
     )

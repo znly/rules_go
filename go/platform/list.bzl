@@ -52,6 +52,13 @@ def declare_config_settings():
             ],
         )
 
+    # Used to detect when CGo is disabled, thus removing the need for a C/C++
+    # toolchain.
+    native.config_setting(
+        name = "cgo_off",
+        constraint_values = ["@io_bazel_rules_go//go/toolchain:cgo_off"],
+    )
+
     # Additional settings for ios. Unfortunately, we cannot have a "darwin"
     # setting that covers both operating systems, so "darwin" here means macOS.
     # The "darwin" build tag will be true for both during execution; this only
