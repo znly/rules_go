@@ -453,12 +453,12 @@ def go_context(ctx, attr = None):
     )
 
 def _go_context_data_impl(ctx):
-    go_toolchain = ctx.toolchains["@io_bazel_rules_go//go:toolchain"]
-    if go_toolchain._cgo_context_data:
-        crosstool = go_toolchain._cgo_context_data.crosstool
-        env = dict(go_toolchain._cgo_context_data.env)
-        tags = go_toolchain._cgo_context_data.tags
-        cgo_tools = go_toolchain._cgo_context_data.cgo_tools
+    cgo_context_data = ctx.attr.cgo_context_data[CgoContextData]
+    if cgo_context_data:
+        crosstool = cgo_context_data.crosstool
+        env = dict(cgo_context_data.env)
+        tags = cgo_context_data.tags
+        cgo_tools = cgo_context_data.cgo_tools
         tool_paths = [
             cgo_tools.c_compiler_path,
             cgo_tools.ld_executable_path,
@@ -508,6 +508,7 @@ go_context_data = rule(
     attrs = {
         "stamp": attr.bool(mandatory = True),
         "strip": attr.string(mandatory = True),
+        "cgo_context_data": attr.label(default = None),
     },
     toolchains = ["@io_bazel_rules_go//go:toolchain"],
     doc = """go_context_data gathers information about the build configuration.
@@ -683,7 +684,7 @@ def _cgo_context_data_impl(ctx):
     )
 
     return [CgoContextData(
-        crosstool = ctx.files._cc_toolchain,
+        crosstool = cc_toolchain.all_files.to_list(),
         tags = tags,
         env = env,
         cgo_tools = struct(

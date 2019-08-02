@@ -153,7 +153,7 @@ def _generate_platforms():
                 name = goos + "_" + goarch + "_cgo",
                 goos = goos,
                 goarch = goarch,
-                constraints = constraints + ["@io_bazel_rules_go//go/toolchain:cgo_on"],
+                constraints = constraints,
                 cgo = True,
             ))
 
@@ -173,7 +173,7 @@ def _generate_platforms():
             name = "ios_" + goarch + "_cgo",
             goos = "darwin",
             goarch = goarch,
-            constraints = constraints + ["@io_bazel_rules_go//go/toolchain:cgo_on"],
+            constraints = constraints,
             cgo = True,
         ))
 

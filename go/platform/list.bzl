@@ -33,6 +33,10 @@ def declare_config_settings():
     goos_goarch pair. These targets may be used in select expressions.
     Each target refers to a corresponding constraint_value in //go/toolchain.
     """
+    native.config_setting(
+        name = "cgo_off",
+        constraint_values = ["@io_bazel_rules_go//go/toolchain:cgo_off"],
+    )
     for goos in GOOS:
         native.config_setting(
             name = goos,

@@ -59,6 +59,13 @@ nogo(
     ],
 )
 
+# cgo_context_data collects information about the C/C++ toolchain.
+# go_toolchains may depend on this in order to support cgo.
+cgo_context_data(
+    name = "cgo_context_data",
+    visibility = ["//visibility:public"],
+)
+
 # go_context_data collects build options and is depended on by all Go targets.
 # It may depend on cgo_context_data via go_toolchain.
 go_context_data(
@@ -72,13 +79,10 @@ go_context_data(
         "@io_bazel_rules_go//go/private:stamp": True,
         "//conditions:default": False,
     }),
-    visibility = ["//visibility:public"],
-)
-
-# cgo_context_data collects information about the C/C++ toolchain.
-# go_toolchains may depend on this in order to support cgo.
-cgo_context_data(
-    name = "cgo_context_data",
+    cgo_context_data = select({
+        "@io_bazel_rules_go//go/platform:cgo_off": None,
+        "//conditions:default": ":cgo_context_data",
+    }),
     visibility = ["//visibility:public"],
 )
 
