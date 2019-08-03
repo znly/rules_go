@@ -12,36 +12,40 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-PLATFORMS = {
-    "armv7-apple-ios": apple_common.platform.ios_device,
-    "armv7-apple-tvos": apple_common.platform.tvos_device,
-    "armv7k-apple-watchos": apple_common.platform.watchos_device,
-    "arm64-apple-ios": apple_common.platform.ios_device,
-    "arm64-apple-tvos": apple_common.platform.tvos_device,
-    "i386-apple-ios": apple_common.platform.ios_simulator,
-    "i386-apple-tvos": apple_common.platform.tvos_simulator,
-    "i386-apple-watchos": apple_common.platform.watchos_simulator,
-    "x86_64-apple-ios": apple_common.platform.ios_simulator,
-    "x86_64-apple-tvos": apple_common.platform.ios_simulator,
-    "x86_64-apple-watchos": apple_common.platform.watchos_simulator,
+_PLATFORMS = {
+    "armv7-apple-ios": (apple_common.platform.ios_device, apple_common.platform_type.ios),
+    "armv7-apple-tvos": (apple_common.platform.tvos_device, apple_common.platform_type.tvos),
+    "armv7k-apple-watchos": (apple_common.platform.watchos_device, apple_common.platform_type.watchos),
+    "arm64-apple-ios": (apple_common.platform.ios_device, apple_common.platform_type.ios),
+    "arm64-apple-tvos": (apple_common.platform.tvos_device, apple_common.platform_type.tvos),
+    "i386-apple-ios": (apple_common.platform.ios_simulator, apple_common.platform_type.ios),
+    "i386-apple-tvos": (apple_common.platform.tvos_simulator, apple_common.platform_type.tvos),
+    "i386-apple-watchos": (apple_common.platform.watchos_simulator, apple_common.platform_type.watchos),
+    "x86_64-apple-ios": (apple_common.platform.ios_simulator, apple_common.platform_type.ios),
+    "x86_64-apple-tvos": (apple_common.platform.ios_simulator, apple_common.platform_type.tvos),
+    "x86_64-apple-watchos": (apple_common.platform.watchos_simulator, apple_common.platform_type.watchos),
 }
 
-def _apple_version_min(platform, version):
-    return "-m" + platform.name_in_plist.lower() + "-version-min=" + version
+def _apple_version_min(ctx, platform, platform_type):
+    xcode_config = ctx.attr._xcode_config[apple_common.XcodeVersionConfig]
+    min_os = str(xcode_config.minimum_os_for_platform_type(platform_type))
+    return "-m" + platform.name_in_plist.lower() + "-version-min=" + min_os
+
+def _apple_env(ctx, platform):
+    xcode_config = ctx.attr._xcode_config[apple_common.XcodeVersionConfig]
+    return apple_common.target_apple_env(xcode_config, platform)
 
 def apple_ensure_options(ctx, env, tags, compiler_option_lists, linker_option_lists, target_gnu_system_name):
     """apple_ensure_options ensures that, when building an Apple target, the
     proper environment, compiler flags and Go tags are correctly set."""
-    platform = PLATFORMS.get(target_gnu_system_name)
-    if platform == None:
+    platform, platform_type = _PLATFORMS.get(target_gnu_system_name, (None, None))
+    if not platform:
         return
-    if target_gnu_system_name.endswith("-ios"):
+    if platform_type == apple_common.platform_type.ios:
         tags.append("ios")  # needed for stdlib building
-    if platform in [apple_common.platform.ios_device, apple_common.platform.ios_simulator]:
-        min_version = _apple_version_min(platform, "7.0")
-        for compiler_options in compiler_option_lists:
-            compiler_options.append(min_version)
-        for linker_options in linker_option_lists:
-            linker_options.append(min_version)
-    xcode_config = ctx.attr._xcode_config[apple_common.XcodeVersionConfig]
-    env.update(apple_common.target_apple_env(xcode_config, platform))
+    env.update(_apple_env(ctx, platform))
+    min_version = _apple_version_min(ctx, platform, platform_type)
+    for compiler_options in compiler_option_lists:
+        compiler_options.append(min_version)
+    for linker_options in linker_option_lists:
+        linker_options.append(min_version)
