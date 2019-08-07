@@ -28,11 +28,30 @@ load(
     "as_iterable",
     "as_list",
 )
+load(
+    "@io_bazel_rules_go//go/private:rules/rule.bzl",
+    "go_rule",
+)
+load(
+    "@io_bazel_rules_go//go/private:rules/aspect.bzl",
+    "go_archive_aspect",
+)
+load(
+    "@io_bazel_rules_go//go/platform:list.bzl",
+    "GOARCH",
+    "GOOS",
+)
+load(
+    "@io_bazel_rules_go//go/private:mode.bzl",
+    "LINKMODES",
+    "LINKMODE_NORMAL",
+)
 
 def _go_path_impl(ctx):
     # Gather all archives. Note that there may be multiple packages with the same
     # importpath (e.g., multiple vendored libraries, internal tests). The same
     # package may also appear in different modes.
+    go = go_context(ctx)
     mode_to_deps = {}
     for dep in ctx.attr.deps:
         archive = get_archive(dep)
@@ -152,10 +171,13 @@ def _go_path_impl(ctx):
         ),
     ]
 
-go_path = rule(
+go_path = go_rule(
     _go_path_impl,
     attrs = {
-        "deps": attr.label_list(providers = [GoArchive]),
+        "deps": attr.label_list(
+            providers = [GoArchive],
+            aspects = [go_archive_aspect],
+        ),
         "data": attr.label_list(allow_files = True),
         "mode": attr.string(
             default = "copy",
@@ -167,6 +189,47 @@ go_path = rule(
         ),
         "include_data": attr.bool(default = True),
         "include_pkg": attr.bool(default = False),
+        "pure": attr.string(
+            values = [
+                "on",
+                "off",
+                "auto",
+            ],
+            default = "auto",
+        ),
+        "static": attr.string(
+            values = [
+                "on",
+                "off",
+                "auto",
+            ],
+            default = "auto",
+        ),
+        "race": attr.string(
+            values = [
+                "on",
+                "off",
+                "auto",
+            ],
+            default = "auto",
+        ),
+        "msan": attr.string(
+            values = [
+                "on",
+                "off",
+                "auto",
+            ],
+            default = "auto",
+        ),
+        "goos": attr.string(
+            values = GOOS.keys() + ["auto"],
+            default = "auto",
+        ),
+        "goarch": attr.string(
+            values = GOARCH.keys() + ["auto"],
+            default = "auto",
+        ),
+        "linkmode": attr.string(values = LINKMODES, default = LINKMODE_NORMAL),
         "_go_path": attr.label(
             default = "@io_bazel_rules_go//go/tools/builders:go_path",
             executable = True,
