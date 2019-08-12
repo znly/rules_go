@@ -23,8 +23,8 @@ load(
     "CPP_LINK_EXECUTABLE_ACTION_NAME",
     "CPP_LINK_STATIC_LIBRARY_ACTION_NAME",
     "C_COMPILE_ACTION_NAME",
-    "OBJC_COMPILE_ACTION_NAME",
     "OBJCPP_COMPILE_ACTION_NAME",
+    "OBJC_COMPILE_ACTION_NAME",
 )
 load(
     "@io_bazel_rules_go_compat//:compat.bzl",
@@ -79,7 +79,6 @@ _COMPILER_OPTIONS_BLACKLIST = {
     # cgo also wants to see all the errors when it is testing the compiler.
     # fmax-errors limits that and causes build failures.
     "-fmax-errors=": None,
-
     "-Wall": None,
 
     # Symbols are needed by Go, so keep them
@@ -453,12 +452,12 @@ def go_context(ctx, attr = None):
     )
 
 def _go_context_data_impl(ctx):
-    go_toolchain = ctx.toolchains["@io_bazel_rules_go//go:toolchain"]
-    if go_toolchain._cgo_context_data:
-        crosstool = go_toolchain._cgo_context_data.crosstool
-        env = dict(go_toolchain._cgo_context_data.env)
-        tags = go_toolchain._cgo_context_data.tags
-        cgo_tools = go_toolchain._cgo_context_data.cgo_tools
+    if ctx.attr.cgo_context_data:
+        cgo_context_data = ctx.attr.cgo_context_data[CgoContextData]
+        crosstool = cgo_context_data.crosstool
+        env = dict(cgo_context_data.env)
+        tags = cgo_context_data.tags
+        cgo_tools = cgo_context_data.cgo_tools
         tool_paths = [
             cgo_tools.c_compiler_path,
             cgo_tools.ld_executable_path,
@@ -508,8 +507,8 @@ go_context_data = rule(
     attrs = {
         "stamp": attr.bool(mandatory = True),
         "strip": attr.string(mandatory = True),
+        "cgo_context_data": attr.label(),
     },
-    toolchains = ["@io_bazel_rules_go//go:toolchain"],
     doc = """go_context_data gathers information about the build configuration.
 It is a common dependency of all Go targets.""",
 )
