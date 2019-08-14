@@ -82,7 +82,8 @@ func stdlib(args []string) error {
 	sandboxPath := abs(".")
 
 	// Strip path prefix from source files in debug information.
-	os.Setenv("CGO_CFLAGS", os.Getenv("CGO_CFLAGS")+" -fdebug-prefix-map="+sandboxPath+"=. -fdebug-prefix-map="+output+"=.")
+	os.Setenv("CGO_CFLAGS", os.Getenv("CGO_CFLAGS")+" "+strings.Join(defaultCFlags(output), " "))
+	os.Setenv("CGO_LDFLAGS", os.Getenv("CGO_LDFLAGS")+" "+strings.Join(defaultLdFlags(), " "))
 
 	// Build the commands needed to build the std library in the right mode
 	// NOTE: the go command stamps compiled .a files with build ids, which are

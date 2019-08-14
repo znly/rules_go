@@ -29,6 +29,7 @@ load(
 load(
     "@io_bazel_rules_go_compat//:compat.bzl",
     "cc_configure_features",
+    "cc_toolchain_all_files",
 )
 load(
     "@io_bazel_rules_go//go/private:providers.bzl",
@@ -682,7 +683,7 @@ def _cgo_context_data_impl(ctx):
     )
 
     return [CgoContextData(
-        crosstool = ctx.files._cc_toolchain,
+        crosstool = cc_toolchain_all_files(ctx),
         tags = tags,
         env = env,
         cgo_tools = struct(
