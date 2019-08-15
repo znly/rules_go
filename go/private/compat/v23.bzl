@@ -80,6 +80,9 @@ def cc_compile_flags(target):
 
     return options
 
+def cc_toolchain_all_files(ctx):
+    return ctx.files._cc_toolchain
+
 # Compatibility for --incompatible_disable_legacy_proto_provider
 
 PROTO_PROVIDER_NAME = ProtoInfo

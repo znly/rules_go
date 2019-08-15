@@ -60,7 +60,7 @@ nogo(
 )
 
 # go_context_data collects build options and is depended on by all Go targets.
-# It may depend on cgo_context_data via go_toolchain.
+# It may depend on cgo_context_data if CGo isn't disabled.
 go_context_data(
     name = "go_context_data",
     cgo_context_data = select({
