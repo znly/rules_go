@@ -68,5 +68,14 @@ def declare_config_settings():
             constraint_values = [
                 "@bazel_tools//platforms:ios",
                 "@io_bazel_rules_go//go/toolchain:" + goarch,
-            ]
+            ],
         )
+
+    # Setting that determines whether cgo is enabled.
+    # This is experimental and may be changed or removed when we migrate
+    # to build settings.
+    native.config_setting(
+        name = "internal_cgo_off",
+        constraint_values = ["@io_bazel_rules_go//go/toolchain:cgo_off"],
+        visibility = ["@io_bazel_rules_go//:__pkg__"],
+    )

@@ -63,14 +63,18 @@ nogo(
 # It may depend on cgo_context_data via go_toolchain.
 go_context_data(
     name = "go_context_data",
-    strip = select({
-        "@io_bazel_rules_go//go/private:strip-always": "always",
-        "@io_bazel_rules_go//go/private:strip-sometimes": "sometimes",
-        "@io_bazel_rules_go//go/private:strip-never": "never",
+    cgo_context_data = select({
+        "@io_bazel_rules_go//go/platform:internal_cgo_off": None,
+        "//conditions:default": ":cgo_context_data",
     }),
     stamp = select({
         "@io_bazel_rules_go//go/private:stamp": True,
         "//conditions:default": False,
+    }),
+    strip = select({
+        "@io_bazel_rules_go//go/private:strip-always": "always",
+        "@io_bazel_rules_go//go/private:strip-sometimes": "sometimes",
+        "@io_bazel_rules_go//go/private:strip-never": "never",
     }),
     visibility = ["//visibility:public"],
 )

@@ -54,7 +54,6 @@ def _go_toolchain_impl(ctx):
 
         # Internal fields -- may be read by emit functions.
         _builder = ctx.executable.builder,
-        _cgo_context_data = ctx.attr.cgo_context_data[CgoContextData] if ctx.attr.cgo_context_data else None,
     )]
 
 go_toolchain = rule(
@@ -81,10 +80,6 @@ go_toolchain = rule(
             doc = "The SDK this toolchain is based on",
         ),
         # Optional extras to a toolchain
-        "cgo_context_data": attr.label(
-            providers = [CgoContextData],
-            doc = "A target that collects information about the C/C++ toolchain.",
-        ),
         "link_flags": attr.string_list(
             doc = "Flags passed to the Go internal linker",
         ),
@@ -100,6 +95,12 @@ def declare_toolchains(host, sdk, builder):
     # keep in sync with generate_toolchain_names
     host_goos, _, host_goarch = host.partition("_")
     for p in PLATFORMS:
+        if p.cgo:
+            # Don't declare separate toolchains for cgo_on / cgo_off.
+            # This is controlled by the cgo_context_data dependency of
+            # go_context_data, which is configured using constraint_values.
+            continue
+
         link_flags = []
         cgo_link_flags = []
         if host_goos == "darwin":
@@ -110,18 +111,11 @@ def declare_toolchains(host, sdk, builder):
         toolchain_name = "go_" + p.name
         impl_name = toolchain_name + "-impl"
 
-        cgo_context_data = "@io_bazel_rules_go//:cgo_context_data" if p.cgo else None
-
-        constraints = p.constraints
-        if p.goos != host_goos or p.goarch != host_goarch:
-            # When cross-compiling, don't require cgo_off.
-            # It won't be set on a custom platform outside of //go/toolchain.
-            constraints = [c for c in constraints if c != "@io_bazel_rules_go//go/toolchain:cgo_off"]
-        else:
-            # When compiling for the host platform, don't require cgo_on.
-            # It won't be set on @bazel_tools//platforms:target_platform,
-            # which is probably the target.
-            constraints = [c for c in constraints if c != "@io_bazel_rules_go//go/toolchain:cgo_on"]
+        cgo_constraints = (
+            "@io_bazel_rules_go//go/toolchain:cgo_off",
+            "@io_bazel_rules_go//go/toolchain:cgo_on",
+        )
+        constraints = [c for c in p.constraints if c not in cgo_constraints]
 
         go_toolchain(
             name = impl_name,
@@ -131,7 +125,6 @@ def declare_toolchains(host, sdk, builder):
             builder = builder,
             link_flags = link_flags,
             cgo_link_flags = cgo_link_flags,
-            cgo_context_data = cgo_context_data,
             tags = ["manual"],
             visibility = ["//visibility:public"],
         )
