@@ -456,6 +456,14 @@ For example:
 
   $ bazel build --platforms=@io_bazel_rules_go//go/toolchain:linux_amd64 //cmd
 
+By default, cgo is disabled when cross-compiling. To cross-compile with cgo,
+add a ``_cgo`` suffix to the target platform. You must register a
+cross-compiling C/C++ toolchain with Bazel for this to work.
+
+.. code::
+
+  $ bazel build --platforms=@io_bazel_rules_go//go/toolchain:linux_amd64_cgo //cmd
+
 Platform-specific sources with build tags or filename suffixes are filtered
 automatically at compile time. You can selectively include platform-specific
 dependencies with ``select`` expressions (Gazelle does this automatically).
