@@ -91,6 +91,9 @@ def cgo_configure(go, srcs, cdeps, cppopts, copts, cxxopts, clinkopts):
     deps_direct = []
     lib_opts = []
     runfiles = go._ctx.runfiles(collect_data = True)
+    # Always include the sandbox as part of the build. Bazel does this, but it
+    # doesn't appear in the CompilationContext.
+    _include_unique(cppopts, "-iquote", ".", seen_quote_includes)
     for d in cdeps:
         runfiles = runfiles.merge(d.data_runfiles)
         if has_cc(d):
