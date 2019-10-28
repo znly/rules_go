@@ -40,7 +40,7 @@ func compilePkg(args []string) error {
 
 	fs := flag.NewFlagSet("GoCompilePkg", flag.ExitOnError)
 	goenv := envFlags(fs)
-	var unfilteredSrcs, coverSrcs, cgoArchivePaths multiFlag
+	var unfilteredSrcs, coverSrcs multiFlag
 	var deps compileArchiveMultiFlag
 	var importPath, packagePath, nogoPath, packageListPath, coverMode string
 	var outPath, outFactsPath, cgoExportHPath string
@@ -49,7 +49,6 @@ func compilePkg(args []string) error {
 	fs.Var(&unfilteredSrcs, "src", ".go, .c, .cc, .m, .mm, .s, or .S file to be filtered and compiled")
 	fs.Var(&coverSrcs, "cover", ".go file that should be instrumented for coverage (must also be a -src)")
 	fs.Var(&deps, "arc", "Import path, package path, and file name of a direct dependency, separated by '='")
-	fs.Var(&cgoArchivePaths, "cgoarc", "Path to a C/C++/ObjC archive to repack into the Go archive. May be repeated.")
 	fs.StringVar(&importPath, "importpath", "", "The import path of the package being compiled. Not passed to the compiler, but may be displayed in debug data.")
 	fs.StringVar(&packagePath, "p", "", "The package path (importmap) of the package being compiled")
 	fs.Var(&gcFlags, "gcflags", "Go compiler flags")
@@ -123,7 +122,6 @@ func compilePkg(args []string) error {
 		packagePath,
 		srcs,
 		deps,
-		cgoArchivePaths,
 		coverMode,
 		coverSrcs,
 		cgoEnabled,
@@ -149,7 +147,6 @@ func compileArchive(
 	packagePath string,
 	srcs archiveSrcs,
 	deps []archive,
-	cgoArchivePaths []string,
 	coverMode string,
 	coverSrcs []string,
 	cgoEnabled bool,
@@ -375,18 +372,6 @@ func compileArchive(
 				return err
 			}
 			objFiles = append(objFiles, obj)
-		}
-	}
-
-	// Extract cgo archvies and re-pack them into the archive.
-	if len(cgoArchivePaths) > 0 {
-		names := map[string]struct{}{}
-		for _, cgoArchivePath := range cgoArchivePaths {
-			arcObjFiles, err := extractFiles(cgoArchivePath, workDir, names)
-			if err != nil {
-				return err
-			}
-			objFiles = append(objFiles, arcObjFiles...)
 		}
 	}
 
