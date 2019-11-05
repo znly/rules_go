@@ -121,6 +121,9 @@ func FindBinary(pkg, name string) (string, bool) {
 		if err != nil {
 			return err
 		}
+		if info.IsDir() {
+			return nil
+		}
 		base := filepath.Base(path)
 		stem := strings.TrimSuffix(base, ".exe")
 		if stem != name {
