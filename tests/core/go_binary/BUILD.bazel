@@ -6,6 +6,7 @@ test_suite(name = "go_binary")
 go_binary(
     name = "hello",
     srcs = ["hello.go"],
+    visibility = ["//visibility:public"],
 )
 
 go_test(

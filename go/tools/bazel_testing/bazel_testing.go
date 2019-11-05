@@ -281,12 +281,12 @@ func setupWorkspace(args Args, files []string) (dir string, cleanup func() error
 	for _, argPath := range files {
 		shortPath := path.Clean(argPath)
 		if !strings.HasPrefix(shortPath, "external/") {
-			return "", cleanup, fmt.Errorf("unexpected file: %s", argPath)
+			return "", cleanup, fmt.Errorf("unexpected file (missing 'external/' prefix): %s", argPath)
 		}
 		shortPath = shortPath[len("external/"):]
 		var workspace string
 		if i := strings.IndexByte(shortPath, '/'); i < 0 {
-			return "", cleanup, fmt.Errorf("unexpected file: %s", argPath)
+			return "", cleanup, fmt.Errorf("unexpected file (missing '/' anywhere): %s", argPath)
 		} else {
 			workspace = shortPath[:i]
 			shortPath = shortPath[i+1:]
