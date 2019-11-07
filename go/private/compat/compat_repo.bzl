@@ -26,30 +26,58 @@
 
 load("@io_bazel_rules_go//go/private:skylib/lib/versions.bzl", "versions")
 
+def _choose(version_impls):
+    """Picks the newest implementation supported by the current version of
+    Bazel from a sequence of version / implementation pairs.
+
+    Args:
+        version_impls: sequence of pairs. The first element of each pair is a
+            parsed semantic version tuple (for example, (1, 2, 3)). The
+            second element is a value that may be returned. The sequence must be
+            sorted by version.
+
+    Returns: the value from the sequence corresponding to the maximum version
+        that is less than the Bazel version. If the Bazel version is not set
+        (in a development build), the last value is returned. If no Bazel
+        version is supported, the first value is returned, and we hope for
+        the best.
+    """
+    if not native.bazel_version:
+        # bazel_version is None in development builds, so we can't do a
+        # version comparison. Use the newest version of the compat file.
+        return version_impls[-1][1]
+    bazel_version = versions.parse(native.bazel_version)
+    newest_supported_impl = version_impls[0][1]
+    for v, impl in version_impls[1:]:
+        if bazel_version < v:
+            break
+        newest_supported_impl = impl
+    return newest_supported_impl
+
 def _go_rules_compat_impl(ctx):
     ctx.file("BUILD.bazel")
-    ctx.symlink(ctx.attr.impl, "compat.bzl")
+    ctx.template("compat.bzl", ctx.attr.impl)
+    ctx.template("platforms/BUILD.bazel", ctx.attr.platforms_build_file)
 
 _go_rules_compat = repository_rule(
     implementation = _go_rules_compat_impl,
     attrs = {
         "impl": attr.label(),
+        "platforms_build_file": attr.label(),
     },
 )
 
 def go_rules_compat(**kwargs):
-    impls = [23, 25]  # keep sorted
-    if not native.bazel_version:
-        # bazel_version is None in development builds, so we can't do a
-        # version comparison. Use the newest version of the compat file.
-        impl = impls[-1]
-    else:
-        bazel_version = versions.parse(native.bazel_version)
-        impl = impls[0]
-        for iv in impls[1:]:
-            next_version = (0, iv, 0)
-            if bazel_version < next_version:
-                break
-            impl = iv
-    impl_label = "@io_bazel_rules_go//go/private:compat/v{}.bzl".format(impl)
-    _go_rules_compat(impl = impl_label, **kwargs)
+    bzl_impl_labels = (
+        ((0, 23, 0), "@io_bazel_rules_go//go/private:compat/v23.bzl"),
+        ((0, 25, 0), "@io_bazel_rules_go//go/private:compat/v25.bzl"),
+    )
+    platforms_build_labels = (
+        ((0, 23, 0), "@io_bazel_rules_go//go/private:compat/BUILD.platforms.v23.bzl"),
+        ((0, 28, 0), "@io_bazel_rules_go//go/private:compat/BUILD.platforms.v28.bzl"),
+    )
+    _go_rules_compat(
+        impl = _choose(bzl_impl_labels),
+        platforms_build_file = _choose(platforms_build_labels),
+        **kwargs
+    )

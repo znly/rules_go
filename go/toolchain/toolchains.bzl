@@ -40,8 +40,9 @@ def declare_constraints():
 
     Each constraint_value corresponds to a valid goos or goarch.
     The goos and goarch values belong to the constraint_settings
-    @bazel_tools//platforms:os and @bazel_tools//platforms:cpu, respectively.
-    To avoid redundancy, if there is an equivalent value in @bazel_tools,
+    @platforms//os:os and @platforms//cpu:cpu, respectively (which are
+    aliased through @io_bazel_rules_go_compat//platforms for compatibility).
+    To avoid redundancy, if there is an equivalent value in @platforms,
     we define an alias here instead of another constraint_value.
 
     Each platform defined here selects a goos and goarch constraint value.
@@ -53,7 +54,7 @@ def declare_constraints():
         if constraint.startswith("@io_bazel_rules_go//go/toolchain:"):
             native.constraint_value(
                 name = goos,
-                constraint_setting = "@bazel_tools//platforms:os",
+                constraint_setting = "@io_bazel_rules_go_compat//platforms:os",
             )
         else:
             native.alias(
@@ -65,7 +66,7 @@ def declare_constraints():
         if constraint.startswith("@io_bazel_rules_go//go/toolchain:"):
             native.constraint_value(
                 name = goarch,
-                constraint_setting = "@bazel_tools//platforms:cpu",
+                constraint_setting = "@io_bazel_rules_go_compat//platforms:cpu",
             )
         else:
             native.alias(

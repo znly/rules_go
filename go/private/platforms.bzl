@@ -17,20 +17,20 @@
 # constraint_values, platforms, and toolchains.
 
 BAZEL_GOOS_CONSTRAINTS = {
-    "android": "@bazel_tools//platforms:android",
-    "darwin": "@bazel_tools//platforms:osx",
-    "freebsd": "@bazel_tools//platforms:freebsd",
-    "linux": "@bazel_tools//platforms:linux",
-    "windows": "@bazel_tools//platforms:windows",
+    "android": "@io_bazel_rules_go_compat//platforms:android",
+    "darwin": "@io_bazel_rules_go_compat//platforms:osx",
+    "freebsd": "@io_bazel_rules_go_compat//platforms:freebsd",
+    "linux": "@io_bazel_rules_go_compat//platforms:linux",
+    "windows": "@io_bazel_rules_go_compat//platforms:windows",
 }
 
 BAZEL_GOARCH_CONSTRAINTS = {
-    "386": "@bazel_tools//platforms:x86_32",
-    "amd64": "@bazel_tools//platforms:x86_64",
-    "arm": "@bazel_tools//platforms:arm",
-    "arm64": "@bazel_tools//platforms:aarch64",
-    "ppc64le": "@bazel_tools//platforms:ppc",
-    "s390x": "@bazel_tools//platforms:s390x",
+    "386": "@io_bazel_rules_go_compat//platforms:x86_32",
+    "amd64": "@io_bazel_rules_go_compat//platforms:x86_64",
+    "arm": "@io_bazel_rules_go_compat//platforms:arm",
+    "arm64": "@io_bazel_rules_go_compat//platforms:aarch64",
+    "ppc64le": "@io_bazel_rules_go_compat//platforms:ppc",
+    "s390x": "@io_bazel_rules_go_compat//platforms:s390x",
 }
 
 GOOS_GOARCH = (
@@ -159,7 +159,7 @@ def _generate_platforms():
 
     for goarch in ("arm", "arm64", "386", "amd64"):
         constraints = [
-            "@bazel_tools//platforms:ios",
+            "@io_bazel_rules_go_compat//platforms:ios",
             GOARCH_CONSTRAINTS[goarch],
         ]
         platforms.append(struct(
