@@ -25,6 +25,7 @@ import (
 
 var (
 	binaryPath = flag.String("binaryPath", "", "")
+	setUpRan   = false
 )
 
 func TestMain(m *testing.M) {
@@ -34,6 +35,10 @@ func TestMain(m *testing.M) {
 Hello world!
 -- nested/file.txt --
 Hello world!`,
+		SetUp: func() error {
+			setUpRan = true
+			return nil
+		},
 	})
 }
 
@@ -56,5 +61,9 @@ func TestGoldenPath(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unable to stat %s file (%q): %s", name, f, err)
 		}
+	}
+
+	if setUpRan == false {
+		t.Fatal("setUp should have been executed but was not")
 	}
 }
