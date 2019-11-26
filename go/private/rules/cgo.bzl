@@ -14,6 +14,7 @@
 
 load(
     "@io_bazel_rules_go//go/private:common.bzl",
+    "as_iterable",
     "has_simple_shared_lib_extension",
     "has_versioned_shared_lib_extension",
 )
@@ -35,6 +36,28 @@ load(
     "cc_transitive_headers",
     "has_cc",
 )
+load(
+    "@io_bazel_rules_go//go/platform:list.bzl",
+    "GOARCH",
+    "GOOS",
+)
+
+_WHOLE_ARCHIVE_FLAGS_BY_GOOS = {
+    goos: ("-Wl,--whole-archive", "-Wl,--no-whole-archive")
+    for goos in GOOS.keys()
+}
+_WHOLE_ARCHIVE_FLAGS_BY_GOOS.update({
+    "darwin": ("-Wl,-all_load", ""),
+    "js": ("", ""),
+})
+
+def get_static_lib(lib):
+    if lib.static_library != None:
+        return lib.static_library
+    elif lib.pic_static_library != None:
+        return lib.pic_static_library
+    elif lib.interface_library != None:
+        return lib.interface_library
 
 def cgo_configure(go, srcs, cdeps, cppopts, copts, cxxopts, clinkopts):
     """cgo_configure returns the inputs and compile / link options
@@ -107,29 +130,35 @@ def cgo_configure(go, srcs, cdeps, cppopts, copts, cxxopts, clinkopts):
                 _include_unique(cppopts, "-iquote", inc, seen_quote_includes)
             for inc in cc_system_includes(d):
                 _include_unique(cppopts, "-isystem", inc, seen_system_includes)
-            for lib in cc_libs(d):
-                # If both static and dynamic variants are available, Bazel will only give
-                # us the static variant. We'll get one file for each transitive dependency,
-                # so the same file may appear more than once.
-                if (lib.basename.startswith("lib") and
-                    has_simple_shared_lib_extension(lib.basename)):
-                    # If the loader would be able to find the library using rpaths,
-                    # use -L and -l instead of hard coding the path to the library in
-                    # the binary. This gives users more flexibility. The linker will add
-                    # rpaths later. We can't add them here because they are relative to
-                    # the binary location, and we don't know where that is.
-                    libname = lib.basename[len("lib"):lib.basename.rindex(".")]
-                    clinkopts.extend(["-L", lib.dirname, "-l", libname])
-                    inputs_direct.append(lib)
-                elif (lib.basename.startswith("lib") and
-                      has_versioned_shared_lib_extension(lib.basename)):
-                    # With a versioned shared library, we must use the full filename,
-                    # otherwise the library will not be found by the linker.
-                    libname = ":%s" % lib.basename
-                    clinkopts.extend(["-L", lib.dirname, "-l", libname])
-                    inputs_direct.append(lib)
+            for lib in as_iterable(d[CcInfo].linking_context.libraries_to_link):
+                static_lib = get_static_lib(lib)
+                if static_lib == None and lib.dynamic_library:
+                    dylib = lib.dynamic_library
+                    # If both static and dynamic variants are available, Bazel will only give
+                    # us the static variant. We'll get one file for each transitive dependency,
+                    # so the same file may appear more than once.
+                    if has_simple_shared_lib_extension(dylib.basename):
+                        # If the loader would be able to find the library using rpaths,
+                        # use -L and -l instead of hard coding the path to the library in
+                        # the binary. This gives users more flexibility. The linker will add
+                        # rpaths later. We can't add them here because they are relative to
+                        # the binary location, and we don't know where that is.
+                        libname = dylib.basename[len("lib"):dylib.basename.rindex(".")]
+                        clinkopts.extend(["-L", dylib.dirname, "-l", libname])
+                        inputs_direct.append(dylib)
+                    elif has_versioned_shared_lib_extension(dylib.basename):
+                        # With a versioned shared library, we must use the full filename,
+                        # otherwise the library will not be found by the linker.
+                        libname = ":%s" % lib.basename
+                        clinkopts.extend(["-L", lib.dirname, "-l", libname])
+                        inputs_direct.append(lib)
                 else:
-                    lib_opts.append(lib.path)
+                    whole_archive_start, whole_archive_end = _WHOLE_ARCHIVE_FLAGS_BY_GOOS[go.mode.goos]
+                    if lib.alwayslink and whole_archive_start:
+                        lib_opts.append(whole_archive_start)
+                    lib_opts.append(static_lib.path)
+                    if lib.alwayslink and whole_archive_end:
+                        lib_opts.append(whole_archive_end)
             clinkopts.extend(cc_link_flags(d))
 
         elif hasattr(d, "objc"):
