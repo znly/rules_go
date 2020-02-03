@@ -109,6 +109,7 @@ def _go_test_impl(ctx):
         "-import",
         "l_test=" + external_source.library.importpath,
     )
+    arguments.add("-pkgname", internal_source.library.importpath)
     arguments.add_all(go_srcs, before_each = "-src", format_each = "l=%s")
     ctx.actions.run(
         inputs = go_srcs,
@@ -136,7 +137,7 @@ def _go_test_impl(ctx):
     if ctx.configuration.coverage_enabled:
         test_deps.append(go.coverdata)
     test_source = go.library_to_source(go, struct(
-        srcs = [struct(files = [main_go])],
+        srcs = [struct(files = [main_go] + ctx.files._testmain_additional_srcs)],
         deps = test_deps,
     ), test_library, False)
     test_archive, executable, runfiles = go.binary(
@@ -237,6 +238,10 @@ go_test = go_rule(
         "copts": attr.string_list(),
         "cxxopts": attr.string_list(),
         "clinkopts": attr.string_list(),
+        "_testmain_additional_srcs": attr.label_list(
+            default = ["@io_bazel_rules_go//go/tools/testwrapper:srcs"],
+            allow_files = go_exts,
+        ),
         # Workaround for bazelbuild/bazel#6293. See comment in lcov_merger.sh.
         "_lcov_merger": attr.label(
             executable = True,
