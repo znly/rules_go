@@ -150,6 +150,7 @@ platforms:
     - "-//proto/wkt:timestamp_go_proto"
     - "-//proto/wkt:type_go_proto"
     - "-//proto/wkt:wrappers_go_proto"
+    - "-//tests:buildifier_test" # transitively requires proto, doesn't build in CI
     - "-@test_chdir_remote//sub:go_default_test"
     - "-//tests/core/cgo:dylib_client"
     - "-//tests/core/cgo:dylib_test"
@@ -271,6 +272,7 @@ platforms:
     - "-@org_golang_x_tools//cmd/splitdwarf/internal/macho:go_default_test"
     - "-@org_golang_x_tools//go/packages/packagestest:go_default_test"
     - "-@test_chdir_remote//sub:go_default_test"
+    - "-//tests:buildifier_test" # requires bash
     - "-//tests/core/cgo/objc:objc_test"
     - "-//tests/core/cgo:race_test"
     - "-//tests/core/cgo:opts_test"
