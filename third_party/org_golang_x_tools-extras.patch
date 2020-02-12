@@ -150,7 +150,7 @@ diff -urN c/go/analysis/passes/atomicalign/BUILD.bazel d/go/analysis/passes/atom
  
  go_library(
      name = "go_default_library",
-@@ -12,6 +12,18 @@
+@@ -13,6 +13,19 @@
      ],
  )
  
@@ -162,6 +162,7 @@ diff -urN c/go/analysis/passes/atomicalign/BUILD.bazel d/go/analysis/passes/atom
 +    deps = [
 +        "//go/analysis:go_tool_library",
 +        "//go/analysis/passes/inspect:go_tool_library",
++        "//go/analysis/passes/internal/analysisutil:go_tool_library",
 +        "//go/ast/inspector:go_tool_library",
 +    ],
 +)
@@ -169,6 +170,31 @@ diff -urN c/go/analysis/passes/atomicalign/BUILD.bazel d/go/analysis/passes/atom
  go_test(
      name = "go_default_test",
      srcs = ["atomicalign_test.go"],
+diff -urN c/go/analysis/passes/atomicalign/BUILD.bazel.orig d/go/analysis/passes/atomicalign/BUILD.bazel.orig
+--- c/go/analysis/passes/atomicalign/BUILD.bazel.orig	1969-12-31 19:00:00.000000000 -0500
++++ d/go/analysis/passes/atomicalign/BUILD.bazel.orig	2000-01-01 00:00:00.000000000 -0000
+@@ -0,0 +1,21 @@
++load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
++
++go_library(
++    name = "go_default_library",
++    srcs = ["atomicalign.go"],
++    importpath = "golang.org/x/tools/go/analysis/passes/atomicalign",
++    visibility = ["//visibility:public"],
++    deps = [
++        "//go/analysis:go_default_library",
++        "//go/analysis/passes/inspect:go_default_library",
++        "//go/analysis/passes/internal/analysisutil:go_default_library",
++        "//go/ast/inspector:go_default_library",
++    ],
++)
++
++go_test(
++    name = "go_default_test",
++    srcs = ["atomicalign_test.go"],
++    embed = [":go_default_library"],
++    deps = ["//go/analysis/analysistest:go_default_library"],
++)
 diff -urN c/go/analysis/passes/bools/BUILD.bazel d/go/analysis/passes/bools/BUILD.bazel
 --- c/go/analysis/passes/bools/BUILD.bazel	2000-01-01 00:00:00.000000000 -0000
 +++ d/go/analysis/passes/bools/BUILD.bazel	2000-01-01 00:00:00.000000000 -0000
@@ -460,7 +486,7 @@ diff -urN c/go/analysis/passes/httpresponse/BUILD.bazel d/go/analysis/passes/htt
  
  go_library(
      name = "go_default_library",
-@@ -12,6 +12,18 @@
+@@ -13,6 +13,19 @@
      ],
  )
  
@@ -472,6 +498,7 @@ diff -urN c/go/analysis/passes/httpresponse/BUILD.bazel d/go/analysis/passes/htt
 +    deps = [
 +        "//go/analysis:go_tool_library",
 +        "//go/analysis/passes/inspect:go_tool_library",
++        "//go/analysis/passes/internal/analysisutil:go_tool_library",
 +        "//go/ast/inspector:go_tool_library",
 +    ],
 +)
@@ -479,6 +506,31 @@ diff -urN c/go/analysis/passes/httpresponse/BUILD.bazel d/go/analysis/passes/htt
  go_test(
      name = "go_default_test",
      srcs = ["httpresponse_test.go"],
+diff -urN c/go/analysis/passes/httpresponse/BUILD.bazel.orig d/go/analysis/passes/httpresponse/BUILD.bazel.orig
+--- c/go/analysis/passes/httpresponse/BUILD.bazel.orig	1969-12-31 19:00:00.000000000 -0500
++++ d/go/analysis/passes/httpresponse/BUILD.bazel.orig	2000-01-01 00:00:00.000000000 -0000
+@@ -0,0 +1,21 @@
++load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
++
++go_library(
++    name = "go_default_library",
++    srcs = ["httpresponse.go"],
++    importpath = "golang.org/x/tools/go/analysis/passes/httpresponse",
++    visibility = ["//visibility:public"],
++    deps = [
++        "//go/analysis:go_default_library",
++        "//go/analysis/passes/inspect:go_default_library",
++        "//go/analysis/passes/internal/analysisutil:go_default_library",
++        "//go/ast/inspector:go_default_library",
++    ],
++)
++
++go_test(
++    name = "go_default_test",
++    srcs = ["httpresponse_test.go"],
++    embed = [":go_default_library"],
++    deps = ["//go/analysis/analysistest:go_default_library"],
++)
 diff -urN c/go/analysis/passes/inspect/BUILD.bazel d/go/analysis/passes/inspect/BUILD.bazel
 --- c/go/analysis/passes/inspect/BUILD.bazel	2000-01-01 00:00:00.000000000 -0000
 +++ d/go/analysis/passes/inspect/BUILD.bazel	2000-01-01 00:00:00.000000000 -0000
@@ -839,6 +891,35 @@ diff -urN c/go/analysis/passes/structtag/BUILD.bazel d/go/analysis/passes/struct
  go_test(
      name = "go_default_test",
      srcs = ["structtag_test.go"],
+diff -urN c/go/analysis/passes/testinggoroutine/BUILD.bazel d/go/analysis/passes/testinggoroutine/BUILD.bazel
+--- c/go/analysis/passes/testinggoroutine/BUILD.bazel	2000-01-01 00:00:00.000000000 -0000
++++ d/go/analysis/passes/testinggoroutine/BUILD.bazel	2000-01-01 00:00:00.000000000 -0000
+@@ -1,4 +1,4 @@
+-load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
++load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test", "go_tool_library")
+ 
+ go_library(
+     name = "go_default_library",
+@@ -13,6 +13,19 @@
+     ],
+ )
+ 
++go_tool_library(
++    name = "go_tool_library",
++    srcs = ["testinggoroutine.go"],
++    importpath = "golang.org/x/tools/go/analysis/passes/testinggoroutine",
++    visibility = ["//visibility:public"],
++    deps = [
++        "//go/analysis:go_tool_library",
++        "//go/analysis/passes/inspect:go_tool_library",
++        "//go/analysis/passes/internal/analysisutil:go_tool_library",
++        "//go/ast/inspector:go_tool_library",
++    ],
++)
++
+ go_test(
+     name = "go_default_test",
+     srcs = ["testinggoroutine_test.go"],
 diff -urN c/go/analysis/passes/tests/BUILD.bazel d/go/analysis/passes/tests/BUILD.bazel
 --- c/go/analysis/passes/tests/BUILD.bazel	2000-01-01 00:00:00.000000000 -0000
 +++ d/go/analysis/passes/tests/BUILD.bazel	2000-01-01 00:00:00.000000000 -0000
