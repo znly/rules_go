@@ -30,6 +30,12 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
+func TestCgo(t *testing.T) {
+	if len(cgo) == 0 {
+		t.Fatalf("cgo is empty")
+	}
+}
+
 func TestEmpty(t *testing.T) {
 	if len(empty) != 0 {
 		t.Fatalf("empty is not empty")
@@ -68,7 +74,7 @@ func TestString(t *testing.T) {
 
 func TestUnpack(t *testing.T) {
 	for _, data := range unpack {
-		checkFile(t, "tests/legacy/go_embed_data/BUILD.bazel", data)
+		checkFile(t, "tests/core/go_embed_data/BUILD.bazel", data)
 	}
 	for _, key := range []string{
 		"from-zip/BUILD.bazel",
