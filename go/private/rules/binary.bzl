@@ -13,37 +13,26 @@
 # limitations under the License.
 
 load(
-    "@io_bazel_rules_go//go/private:context.bzl",
+    ":context.bzl",
     "go_context",
 )
 load(
-    "@io_bazel_rules_go//go/private:common.bzl",
+    ":common.bzl",
     "asm_exts",
     "cgo_exts",
     "go_exts",
 )
 load(
-    "@io_bazel_rules_go//go/private:rules/aspect.bzl",
-    "go_archive_aspect",
-)
-load(
-    "@io_bazel_rules_go//go/private:rules/rule.bzl",
-    "go_rule",
-)
-load(
-    "@io_bazel_rules_go//go/private:providers.bzl",
+    ":providers.bzl",
     "GoLibrary",
     "GoSDK",
 )
 load(
-    "@io_bazel_rules_go//go/platform:list.bzl",
-    "GOARCH",
-    "GOOS",
+    ":rules/transition.bzl",
+    "go_transition_rule",
 )
 load(
-    "@io_bazel_rules_go//go/private:mode.bzl",
-    "LINKMODES",
-    "LINKMODE_NORMAL",
+    ":mode.bzl",
     "LINKMODE_PLUGIN",
     "LINKMODE_SHARED",
 )
@@ -51,23 +40,6 @@ load(
     "@bazel_skylib//lib:shell.bzl",
     "shell",
 )
-
-_SHARED_ATTRS = {
-    "basename": attr.string(),
-    "data": attr.label_list(allow_files = True),
-    "srcs": attr.label_list(allow_files = go_exts + asm_exts + cgo_exts),
-    "gc_goopts": attr.string_list(),
-    "gc_linkopts": attr.string_list(),
-    "x_defs": attr.string_dict(),
-    "linkmode": attr.string(values = LINKMODES, default = LINKMODE_NORMAL),
-    "out": attr.string(),
-    "cgo": attr.bool(),
-    "cdeps": attr.label_list(),
-    "cppopts": attr.string_list(),
-    "copts": attr.string_list(),
-    "cxxopts": attr.string_list(),
-    "clinkopts": attr.string_list(),
-}
 
 def _go_binary_impl(ctx):
     """go_binary_impl emits actions for compiling and linking a go executable."""
@@ -109,62 +81,37 @@ def _go_binary_impl(ctx):
         ),
     ]
 
-go_binary = go_rule(
-    _go_binary_impl,
-    attrs = dict({
+_go_binary_kwargs = {
+    "implementation": _go_binary_impl,
+    "attrs": {
+        "srcs": attr.label_list(allow_files = go_exts + asm_exts + cgo_exts),
+        "data": attr.label_list(allow_files = True),
         "deps": attr.label_list(
             providers = [GoLibrary],
-            aspects = [go_archive_aspect],
         ),
         "embed": attr.label_list(
             providers = [GoLibrary],
-            aspects = [go_archive_aspect],
         ),
         "importpath": attr.string(),
-        "pure": attr.string(
-            values = [
-                "on",
-                "off",
-                "auto",
-            ],
-            default = "auto",
-        ),
-        "static": attr.string(
-            values = [
-                "on",
-                "off",
-                "auto",
-            ],
-            default = "auto",
-        ),
-        "race": attr.string(
-            values = [
-                "on",
-                "off",
-                "auto",
-            ],
-            default = "auto",
-        ),
-        "msan": attr.string(
-            values = [
-                "on",
-                "off",
-                "auto",
-            ],
-            default = "auto",
-        ),
-        "goos": attr.string(
-            values = GOOS.keys() + ["auto"],
-            default = "auto",
-        ),
-        "goarch": attr.string(
-            values = GOARCH.keys() + ["auto"],
-            default = "auto",
-        ),
-    }.items() + _SHARED_ATTRS.items()),
-    executable = True,
-)
-# See go/core.rst#go_binary for full documentation.
+        "gc_goopts": attr.string_list(),
+        "gc_linkopts": attr.string_list(),
+        "x_defs": attr.string_dict(),
+        "basename": attr.string(),
+        "out": attr.string(),
+        "cgo": attr.bool(),
+        "cdeps": attr.label_list(),
+        "cppopts": attr.string_list(),
+        "copts": attr.string_list(),
+        "cxxopts": attr.string_list(),
+        "clinkopts": attr.string_list(),
+        "_go_context_data": attr.label(default = "//:go_context_data"),
+    },
+    "executable": True,
+    "toolchains": ["@io_bazel_rules_go//go:toolchain"],
+}
+
+go_binary = rule(**_go_binary_kwargs)
+go_transition_binary = go_transition_rule(**_go_binary_kwargs)
 
 def _go_tool_binary_impl(ctx):
     sdk = ctx.attr.sdk[GoSDK]

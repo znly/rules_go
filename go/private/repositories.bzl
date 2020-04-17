@@ -21,7 +21,7 @@ load("@io_bazel_rules_go//proto:gogo.bzl", "gogo_special_proto")
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
-def go_rules_dependencies():
+def go_rules_dependencies(is_rules_go = False):
     """Declares workspaces the Go rules depend on. Workspaces that use
     rules_go should call this.
 
@@ -235,6 +235,28 @@ def go_rules_dependencies():
         nogo = DEFAULT_NOGO,
     )
 
+    go_name_hack(
+        name = "io_bazel_rules_go_name_hack",
+        is_rules_go = is_rules_go,
+    )
+
 def _maybe(repo_rule, name, **kwargs):
     if name not in native.existing_rules():
         repo_rule(name = name, **kwargs)
+
+def _go_name_hack_impl(ctx):
+    ctx.file("BUILD.bazel")
+    content = "IS_RULES_GO = {}".format(ctx.attr.is_rules_go)
+    ctx.file("def.bzl", content)
+
+go_name_hack = repository_rule(
+    implementation = _go_name_hack_impl,
+    attrs = {
+        "is_rules_go": attr.bool(),
+    },
+    doc = """go_name_hack records whether the main workspace is rules_go.
+
+See documentation for _filter_transition_label in
+go/private/rules/transition.bzl.
+""",
+)

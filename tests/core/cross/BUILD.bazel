@@ -11,6 +11,7 @@ go_binary(
     goarch = "amd64",
     goos = "windows",
     pure = "on",
+    deps = [":platform_lib"],
 )
 
 go_binary(
@@ -19,6 +20,7 @@ go_binary(
     goarch = "amd64",
     goos = "linux",
     pure = "on",
+    deps = [":platform_lib"],
 )
 
 go_binary(
@@ -27,6 +29,17 @@ go_binary(
     goarch = "amd64",
     goos = "darwin",
     pure = "on",
+    deps = [":platform_lib"],
+)
+
+go_library(
+    name = "platform_lib",
+    srcs = select({
+        "//go/platform:darwin": ["lib_darwin.go"],
+        "//go/platform:linux": ["lib_linux.go"],
+        "//go/platform:windows": ["lib_windows.go"],
+    }),
+    importpath = "github.com/bazelbuild/rules_go/tests/core/cross/platform_lib",
 )
 
 go_test(

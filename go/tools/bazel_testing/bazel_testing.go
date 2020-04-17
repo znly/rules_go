@@ -43,6 +43,20 @@ import (
 	"github.com/bazelbuild/rules_go/go/tools/internal/txtar"
 )
 
+const (
+	// Standard Bazel exit codes.
+	// A subset of codes in https://cs.opensource.google/bazel/bazel/+/master:src/main/java/com/google/devtools/build/lib/util/ExitCode.java.
+	SUCCESS                    = 0
+	BUILD_FAILURE              = 1
+	COMMAND_LINE_ERROR         = 2
+	TESTS_FAILED               = 3
+	NO_TESTS_FOUND             = 4
+	RUN_FAILURE                = 6
+	ANALYSIS_FAILURE           = 7
+	INTERRUPTED                = 8
+	LOCK_HELD_NOBLOCK_FOR_LOCK = 9
+)
+
 // Args is a list of arguments to TestMain. It's defined as a struct so
 // that new optional arguments may be added without breaking compatibility.
 type Args struct {
@@ -229,6 +243,10 @@ func (e *StderrExitError) Error() string {
 	sb.Write(e.Err.Stderr)
 	sb.WriteString(e.Err.Error())
 	return sb.String()
+}
+
+func (e *StderrExitError) Unwrap() error {
+	return e.Err
 }
 
 func setupWorkspace(args Args, files []string) (dir string, cleanup func() error, err error) {

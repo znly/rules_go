@@ -28,13 +28,16 @@ load(
 )
 load(
     ":providers.bzl",
-    "CgoContextData",
+    "CgoContextInfo",
     "EXPLICIT_PATH",
     "EXPORT_PATH",
+    "GoArchive",
+    "GoConfigInfo",
+    "GoContextInfo",
     "GoLibrary",
     "GoSource",
+    "GoStdLib",
     "INFERRED_PATH",
-    "get_archive",
     "get_source",
 )
 load(
@@ -57,9 +60,10 @@ load(
     "@bazel_skylib//lib:paths.bzl",
     "paths",
 )
-
-GoContext = provider()
-_GoContextData = provider()
+load(
+    "@bazel_skylib//rules:common_settings.bzl",
+    "BuildSettingInfo",
+)
 
 _COMPILER_OPTIONS_BLACKLIST = {
     # cgo parses the error messages from the compiler.  It can't handle colors.
@@ -337,41 +341,40 @@ def go_context(ctx, attr = None):
     """Returns an API used to build Go code.
 
     See /go/toolchains.rst#go-context"""
-    toolchain = ctx.toolchains["@io_bazel_rules_go//go:toolchain"]
-
     if not attr:
         attr = ctx.attr
-
+    toolchain = ctx.toolchains["@io_bazel_rules_go//go:toolchain"]
+    cgo_context_info = None
+    go_config_info = None
+    stdlib = None
+    coverdata = None
     nogo = None
-    if hasattr(attr, "_nogo"):
-        nogo_files = attr._nogo.files.to_list()
-        if nogo_files:
-            nogo = nogo_files[0]
+    if hasattr(attr, "_go_context_data"):
+        if CgoContextInfo in attr._go_context_data:
+            cgo_context_info = attr._go_context_data[CgoContextInfo]
+        go_config_info = attr._go_context_data[GoConfigInfo]
+        stdlib = attr._go_context_data[GoStdLib]
+        coverdata = attr._go_context_data[GoContextInfo].coverdata
+        nogo = attr._go_context_data[GoContextInfo].nogo
+    if getattr(attr, "_cgo_context_data", None) and CgoContextInfo in attr._cgo_context_data:
+        cgo_context_info = attr._cgo_context_data[CgoContextInfo]
+    if getattr(attr, "cgo_context_data", None) and CgoContextInfo in attr.cgo_context_data:
+        cgo_context_info = attr.cgo_context_data[CgoContextInfo]
+    if hasattr(attr, "_go_config"):
+        go_config_info = attr._go_config[GoConfigInfo]
+    if hasattr(attr, "_stdlib"):
+        stdlib = attr._stdlib[GoStdLib]
 
-    coverdata = getattr(attr, "_coverdata", None)
-    if coverdata:
-        coverdata = get_archive(coverdata)
-
-    host_only = getattr(attr, "_hostonly", False)
-
-    context_data = attr._go_context_data[_GoContextData]
-    mode = get_mode(ctx, host_only, toolchain, context_data)
-    tags = list(context_data.tags)
-    if mode.race:
-        tags.append("race")
-    if mode.msan:
-        tags.append("msan")
+    mode = get_mode(ctx, toolchain, cgo_context_info, go_config_info)
+    tags = mode.tags
     binary = toolchain.sdk.go
 
-    stdlib = getattr(attr, "_stdlib", None)
     if stdlib:
-        stdlib = get_source(stdlib).stdlib
         goroot = stdlib.root_file.dirname
     else:
         goroot = toolchain.sdk.root_file.dirname
 
-    env = dict(context_data.env)
-    env.update({
+    env = {
         "GOARCH": mode.goarch,
         "GOOS": mode.goos,
         "GOROOT": goroot,
@@ -385,7 +388,42 @@ def go_context(ctx, attr = None):
         # Explicitly clear this environment variable to ensure that doesn't
         # happen. See #2291 for more information.
         "GOPATH": "",
-    })
+    }
+    if mode.pure:
+        crosstool = []
+        cgo_tools = None
+    else:
+        env.update(cgo_context_info.env)
+        crosstool = cgo_context_info.crosstool
+
+        # Add C toolchain directories to PATH.
+        # On ARM, go tool link uses some features of gcc to complete its work,
+        # so PATH is needed on ARM.
+        path_set = {}
+        if "PATH" in env:
+            for p in env["PATH"].split(ctx.configuration.host_path_separator):
+                path_set[p] = None
+        cgo_tools = cgo_context_info.cgo_tools
+        tool_paths = [
+            cgo_tools.c_compiler_path,
+            cgo_tools.ld_executable_path,
+            cgo_tools.ld_static_lib_path,
+            cgo_tools.ld_dynamic_lib_path,
+        ]
+        for tool_path in tool_paths:
+            tool_dir, _, _ = tool_path.rpartition("/")
+            path_set[tool_dir] = None
+        paths = sorted(path_set.keys())
+        if ctx.configuration.host_path_separator == ":":
+            # HACK: ":" is a proxy for a UNIX-like host.
+            # The tools returned above may be bash scripts that reference commands
+            # in directories we might not otherwise include. For example,
+            # on macOS, wrapped_ar calls dirname.
+            if "/bin" not in path_set:
+                paths.append("/bin")
+            if "/usr/bin" not in path_set:
+                paths.append("/usr/bin")
+        env["PATH"] = ctx.configuration.host_path_separator.join(paths)
 
     # TODO(jayconrod): remove this. It's way too broad. Everything should
     # depend on more specific lists.
@@ -399,7 +437,7 @@ def go_context(ctx, attr = None):
     importpath, importmap, pathtype = _infer_importpath(ctx)
     importpath_aliases = tuple(getattr(attr, "importpath_aliases", ()))
 
-    return GoContext(
+    return struct(
         # Fields
         toolchain = toolchain,
         sdk = toolchain.sdk,
@@ -413,20 +451,20 @@ def go_context(ctx, attr = None):
         actions = ctx.actions,
         exe_extension = goos_to_extension(mode.goos),
         shared_extension = goos_to_shared_extension(mode.goos),
-        crosstool = context_data.crosstool,
+        crosstool = crosstool,
         package_list = toolchain.sdk.package_list,
         importpath = importpath,
         importmap = importmap,
         importpath_aliases = importpath_aliases,
         pathtype = pathtype,
-        cgo_tools = context_data.cgo_tools,
+        cgo_tools = cgo_tools,
         nogo = nogo,
         coverdata = coverdata,
         coverage_enabled = ctx.configuration.coverage_enabled,
         coverage_instrumented = ctx.coverage_instrumented(),
         env = env,
         tags = tags,
-        stamp = context_data.stamp,
+        stamp = mode.stamp,
         # Action generators
         archive = toolchain.actions.archive,
         asm = toolchain.actions.asm,
@@ -450,65 +488,44 @@ def go_context(ctx, attr = None):
     )
 
 def _go_context_data_impl(ctx):
-    if ctx.attr.cgo_context_data:
-        cgo_context_data = ctx.attr.cgo_context_data[CgoContextData]
-        crosstool = cgo_context_data.crosstool
-        env = dict(cgo_context_data.env)
-        tags = cgo_context_data.tags
-        cgo_tools = cgo_context_data.cgo_tools
-        tool_paths = [
-            cgo_tools.c_compiler_path,
-            cgo_tools.ld_executable_path,
-            cgo_tools.ld_static_lib_path,
-            cgo_tools.ld_dynamic_lib_path,
-        ]
-    else:
-        crosstool = []
-        env = {}
-        tags = ctx.var["gotags"].split(",") if "gotags" in ctx.var else []
-        cgo_tools = None
-        tool_paths = []
-
-    # Add C toolchain directories to PATH.
-    # On ARM, go tool link uses some features of gcc to complete its work,
-    # so PATH is needed on ARM.
-    path_set = {}
-    if "PATH" in env:
-        for p in env["PATH"].split(ctx.configuration.host_path_separator):
-            path_set[p] = None
-    for tool_path in tool_paths:
-        tool_dir, _, _ = tool_path.rpartition("/")
-        path_set[tool_dir] = None
-    paths = sorted(path_set.keys())
-    if ctx.configuration.host_path_separator == ":":
-        # HACK: ":" is a proxy for a UNIX-like host.
-        # The tools returned above may be bash scripts that reference commands
-        # in directories we might not otherwise include. For example,
-        # on macOS, wrapped_ar calls dirname.
-        if "/bin" not in path_set:
-            paths.append("/bin")
-        if "/usr/bin" not in path_set:
-            paths.append("/usr/bin")
-    env["PATH"] = ctx.configuration.host_path_separator.join(paths)
-
-    return [_GoContextData(
-        stamp = ctx.attr.stamp,
-        strip = ctx.attr.strip,
-        crosstool = crosstool,
-        tags = tags,
-        env = env,
-        cgo_tools = cgo_tools,
-    )]
+    coverdata = ctx.attr.coverdata[GoArchive]
+    nogo = ctx.files.nogo[0] if ctx.files.nogo else None
+    providers = [
+        GoContextInfo(
+            coverdata = ctx.attr.coverdata[GoArchive],
+            nogo = nogo,
+        ),
+        ctx.attr.stdlib[GoStdLib],
+        ctx.attr.go_config[GoConfigInfo],
+    ]
+    if ctx.attr.cgo_context_data and CgoContextInfo in ctx.attr.cgo_context_data:
+        providers.append(ctx.attr.cgo_context_data[CgoContextInfo])
+    return providers
 
 go_context_data = rule(
     _go_context_data_impl,
     attrs = {
-        "stamp": attr.bool(mandatory = True),
-        "strip": attr.string(mandatory = True),
         "cgo_context_data": attr.label(),
+        "coverdata": attr.label(
+            mandatory = True,
+            providers = [GoArchive],
+        ),
+        "go_config": attr.label(
+            mandatory = True,
+            providers = [GoConfigInfo],
+        ),
+        "nogo": attr.label(
+            mandatory = True,
+            cfg = "exec",
+        ),
+        "stdlib": attr.label(
+            mandatory = True,
+            providers = [GoStdLib],
+        ),
     },
     doc = """go_context_data gathers information about the build configuration.
-It is a common dependency of all Go targets.""",
+    It is a common dependency of all Go targets.""",
+    toolchains = ["@io_bazel_rules_go//go:toolchain"],
 )
 
 def _cgo_context_data_impl(ctx):
@@ -679,7 +696,7 @@ def _cgo_context_data_impl(ctx):
         cc_toolchain.target_gnu_system_name,
     )
 
-    return [CgoContextData(
+    return [CgoContextInfo(
         crosstool = find_cpp_toolchain(ctx).all_files.to_list(),
         tags = tags,
         env = env,
@@ -707,5 +724,79 @@ cgo_context_data = rule(
     },
     toolchains = ["@bazel_tools//tools/cpp:toolchain_type"],
     fragments = ["apple", "cpp"],
-    provides = [CgoContextData],
+    provides = [CgoContextInfo],
+    doc = """Collects information about the C/C++ toolchain. The C/C++ toolchain
+    is needed to build cgo code, but is generally optional. Rules can't have
+    optional toolchains, so instead, we have an optional dependency on this
+    rule.""",
+)
+
+def _cgo_context_data_proxy_impl(ctx):
+    return [ctx.attr.actual[CgoContextInfo]] if ctx.attr.actual else []
+
+cgo_context_data_proxy = rule(
+    implementation = _cgo_context_data_proxy_impl,
+    attrs = {
+        "actual": attr.label(),
+    },
+    doc = """Conditionally depends on cgo_context_data and forwards it provider.
+
+    Useful in situations where select cannot be used, like attribute defaults.
+    """,
+)
+
+def _go_config_impl(ctx):
+    return [GoConfigInfo(
+        static = ctx.attr.static[BuildSettingInfo].value,
+        race = ctx.attr.race[BuildSettingInfo].value,
+        msan = ctx.attr.msan[BuildSettingInfo].value,
+        pure = ctx.attr.pure[BuildSettingInfo].value,
+        strip = ctx.attr.strip[BuildSettingInfo].value,
+        debug = ctx.attr.debug[BuildSettingInfo].value,
+        linkmode = ctx.attr.linkmode[BuildSettingInfo].value,
+        tags = ctx.attr.gotags[BuildSettingInfo].value,
+        stamp = ctx.attr.stamp,
+    )]
+
+go_config = rule(
+    implementation = _go_config_impl,
+    attrs = {
+        "static": attr.label(
+            mandatory = True,
+            providers = [BuildSettingInfo],
+        ),
+        "race": attr.label(
+            mandatory = True,
+            providers = [BuildSettingInfo],
+        ),
+        "msan": attr.label(
+            mandatory = True,
+            providers = [BuildSettingInfo],
+        ),
+        "pure": attr.label(
+            mandatory = True,
+            providers = [BuildSettingInfo],
+        ),
+        "strip": attr.label(
+            mandatory = True,
+            providers = [BuildSettingInfo],
+        ),
+        "debug": attr.label(
+            mandatory = True,
+            providers = [BuildSettingInfo],
+        ),
+        "linkmode": attr.label(
+            mandatory = True,
+            providers = [BuildSettingInfo],
+        ),
+        "gotags": attr.label(
+            mandatory = True,
+            providers = [BuildSettingInfo],
+        ),
+        "stamp": attr.bool(mandatory = True),
+    },
+    provides = [GoConfigInfo],
+    doc = """Collects information about build settings in the current
+    configuration. Rules may depend on this instead of depending on all
+    the build settings directly.""",
 )

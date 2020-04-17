@@ -13,11 +13,11 @@
 # limitations under the License.
 
 load(
-    "@io_bazel_rules_go//go/private:context.bzl",
+    ":context.bzl",
     "go_context",
 )
 load(
-    "@io_bazel_rules_go//go/private:common.bzl",
+    ":common.bzl",
     "asm_exts",
     "cgo_exts",
     "go_exts",
@@ -25,29 +25,20 @@ load(
     "split_srcs",
 )
 load(
-    "@io_bazel_rules_go//go/private:rules/binary.bzl",
+    ":rules/binary.bzl",
     "gc_linkopts",
 )
 load(
-    "@io_bazel_rules_go//go/private:providers.bzl",
+    ":providers.bzl",
     "GoLibrary",
     "INFERRED_PATH",
 )
 load(
-    "@io_bazel_rules_go//go/private:rules/aspect.bzl",
-    "go_archive_aspect",
+    ":rules/transition.bzl",
+    "go_transition_rule",
 )
 load(
-    "@io_bazel_rules_go//go/private:rules/rule.bzl",
-    "go_rule",
-)
-load(
-    "@io_bazel_rules_go//go/platform:list.bzl",
-    "GOARCH",
-    "GOOS",
-)
-load(
-    "@io_bazel_rules_go//go/private:mode.bzl",
+    ":mode.bzl",
     "LINKMODE_NORMAL",
 )
 
@@ -109,6 +100,8 @@ def _go_test_impl(ctx):
         "l_test=" + external_source.library.importpath,
     )
     arguments.add("-pkgname", internal_source.library.importpath)
+    if go.mode.tags:
+        arguments.add("-tags", ",".join(go.mode.tags))
     arguments.add_all(go_srcs, before_each = "-src", format_each = "l=%s")
     ctx.actions.run(
         inputs = go_srcs,
@@ -172,60 +165,14 @@ def _go_test_impl(ctx):
         ),
     ]
 
-go_test = go_rule(
-    _go_test_impl,
-    attrs = {
+_go_test_kwargs = {
+    "implementation": _go_test_impl,
+    "attrs": {
         "data": attr.label_list(allow_files = True),
         "srcs": attr.label_list(allow_files = go_exts + asm_exts + cgo_exts),
-        "deps": attr.label_list(
-            providers = [GoLibrary],
-            aspects = [go_archive_aspect],
-        ),
-        "embed": attr.label_list(
-            providers = [GoLibrary],
-            aspects = [go_archive_aspect],
-        ),
+        "deps": attr.label_list(providers = [GoLibrary]),
+        "embed": attr.label_list(providers = [GoLibrary]),
         "importpath": attr.string(),
-        "pure": attr.string(
-            values = [
-                "on",
-                "off",
-                "auto",
-            ],
-            default = "auto",
-        ),
-        "static": attr.string(
-            values = [
-                "on",
-                "off",
-                "auto",
-            ],
-            default = "auto",
-        ),
-        "race": attr.string(
-            values = [
-                "on",
-                "off",
-                "auto",
-            ],
-            default = "auto",
-        ),
-        "msan": attr.string(
-            values = [
-                "on",
-                "off",
-                "auto",
-            ],
-            default = "auto",
-        ),
-        "goos": attr.string(
-            values = GOOS.keys() + ["auto"],
-            default = "auto",
-        ),
-        "goarch": attr.string(
-            values = GOARCH.keys() + ["auto"],
-            default = "auto",
-        ),
         "gc_goopts": attr.string_list(),
         "gc_linkopts": attr.string_list(),
         "rundir": attr.string(),
@@ -237,6 +184,7 @@ go_test = go_rule(
         "copts": attr.string_list(),
         "cxxopts": attr.string_list(),
         "clinkopts": attr.string_list(),
+        "_go_context_data": attr.label(default = "//:go_context_data"),
         "_testmain_additional_srcs": attr.label_list(
             default = ["@io_bazel_rules_go//go/tools/testwrapper:srcs"],
             allow_files = go_exts,
@@ -248,7 +196,10 @@ go_test = go_rule(
             cfg = "target",
         ),
     },
-    executable = True,
-    test = True,
-)
-# See go/core.rst#go_test for full documentation.
+    "executable": True,
+    "test": True,
+    "toolchains": ["@io_bazel_rules_go//go:toolchain"],
+}
+
+go_test = rule(**_go_test_kwargs)
+go_transition_test = go_transition_rule(**_go_test_kwargs)

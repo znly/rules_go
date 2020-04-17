@@ -61,7 +61,11 @@ GoSDK = provider(
 
 GoStdLib = provider()
 
-CgoContextData = provider()
+GoConfigInfo = provider()
+
+GoContextInfo = provider()
+
+CgoContextInfo = provider()
 
 EXPLICIT_PATH = "explicit"
 
