@@ -3,6 +3,7 @@
 
 .. _nogo: nogo.rst#nogo
 .. _go_library: core.rst#go_library
+.. _go_tool_library: core.rst#go_tool_library
 .. _analysis: https://godoc.org/golang.org/x/tools/go/analysis
 .. _Analyzer: https://godoc.org/golang.org/x/tools/go/analysis#Analyzer
 .. _GoLibrary: providers.rst#GoLibrary
@@ -17,6 +18,10 @@
 .. |logo| image:: nogo_logo.png
 .. footer:: The ``nogo`` logo was derived from the Go gopher, which was designed by Renee French. (http://reneefrench.blogspot.com/) The design is licensed under the Creative Commons 3.0 Attributions license. Read this article for more details: http://blog.golang.org/gopher
 
+
+**WARNING**: This functionality is experimental, so its API might change.
+Please do not rely on it for production use, but feel free to use it and file
+issues.
 
 ``nogo`` is a tool that analyzes the source code of Go programs. It runs
 alongside the Go compiler in the Bazel Go rules and rejects programs that
@@ -49,32 +54,30 @@ want to run.
             # analyzer from the local repository
             ":importunsafe",
             # analyzer from a remote repository
-            "@org_golang_x_tools//go/analysis/passes/printf:go_default_library",
+            "@org_golang_x_tools//go/analysis/passes/printf:go_tool_library",
         ],
         visibility = ["//visibility:public"], # must have public visibility
     )
 
-    go_library(
+    go_tool_library(
         name = "importunsafe",
         srcs = ["importunsafe.go"],
         importpath = "importunsafe",
-        deps = ["@org_golang_x_tools//go/analysis:go_default_library"],
+        deps = ["@org_golang_x_tools//go/analysis:go_tool_library"],
         visibility = ["//visibility:public"],
     )
 
-To build with this ``nogo`` target, use the
-``--@io_bazel_rules_go//go/config:nogo`` command line flag.
+Pass a label for your `nogo`_ target to ``go_register_toolchains`` in your
+``WORKSPACE`` file.
 
-.. code::
+.. code:: bzl
 
-    bazel build --@io_bazel_rules_go//go/config:nogo=//:my_nogo //:my_binary
+    load("@io_bazel_rules_go//go:deps.bzl", "go_rules_dependencies", "go_register_toolchains")
+    go_rules_dependencies()
+    go_register_toolchains(nogo = "@//:my_nogo") # my_nogo is in the top-level BUILD file of this workspace
 
-For convenience, you can add this to your workspace's ``.bazelrc`` file to
-avoid having to type this out for every command.
-
-.. code::
-
-    build --@io_bazel_rules_go//go/config:nogo=//:my_nogo
+**NOTE**: You must include ``"@//"`` prefix when referring to targets in the local
+workspace.
 
 The `nogo`_ rule will generate a program that executes all the supplied
 analyzers at build-time. The generated ``nogo`` program will run alongside the
@@ -83,20 +86,20 @@ even if the target is imported from an external repository. However, ``nogo``
 will not run when targets from the current repository are imported into other
 workspaces and built there.
 
-The target ``@io_bazel_rules_go//:tools_nogo`` contains the analyzers from
-``golang.org/x/tools``. This is the same set of analyzers that ``go vet`` uses.
-You can use this instead of declaring your own ``nogo`` target.
+To run all the ``golang.org/x/tools`` analyzers, use ``@io_bazel_rules_go//:tools_nogo``.
 
-.. code::
+.. code:: bzl
 
-    build --@io_bazel_rules_go//go/config:nogo=@io_bazel_rules_go//:tools_nogo
+    load("@io_bazel_rules_go//go:deps.bzl", "go_rules_dependencies", "go_register_toolchains")
+    go_rules_dependencies()
+    go_register_toolchains(nogo = "@io_bazel_rules_go//:tools_nogo")
 
 To run the analyzers from ``tools_nogo`` together with your own analyzers, use
 the ``TOOLS_NOGO`` list of dependencies.
 
 .. code:: bzl
 
-    load("@io_bazel_rules_go//go:def.bzl", "go_library", "nogo", "TOOLS_NOGO")
+    load("@io_bazel_rules_go//go:def.bzl", "nogo", "TOOLS_NOGO")
 
     nogo(
         name = "my_nogo",
@@ -107,11 +110,11 @@ the ``TOOLS_NOGO`` list of dependencies.
         visibility = ["//visibility:public"], # must have public visibility
     )
 
-    go_library(
+    go_tool_library(
         name = "importunsafe",
         srcs = ["importunsafe.go"],
         importpath = "importunsafe",
-        deps = ["@org_golang_x_tools//go/analysis:go_default_library"],
+        deps = ["@org_golang_x_tools//go/analysis:go_tool_library"],
         visibility = ["//visibility:public"],
     )
 
@@ -156,34 +159,39 @@ already been run. For example:
 Any diagnostics reported by the analyzer will stop the build. Do not emit
 diagnostics unless they are severe enough to warrant stopping the build.
 
-Each analyzer must be written as a `go_library`_ rule and should import
-`@org_golang_x_tools//go/analysis:go_default_library`, the package anaysis
-framework.
+Each analyzer must be written as a `go_tool_library`_ rule and must import
+`@org_golang_x_tools//go/analysis:go_tool_library`, the `go_tool_library`_
+version of the package `analysis`_ target.
 
 For example:
 
 .. code:: bzl
 
-    load("@io_bazel_rules_go//go:def.bzl", "go_library")
+    load("@io_bazel_rules_go//go:def.bzl", "go_tool_library")
 
-    go_library(
+    go_tool_library(
         name = "importunsafe",
         srcs = ["importunsafe.go"],
         importpath = "importunsafe",
-        deps = ["@org_golang_x_tools//go/analysis:go_default_library"],
+        deps = ["@org_golang_x_tools//go/analysis:go_tool_library"],
         visibility = ["//visibility:public"],
     )
 
-    go_library(
+    go_tool_library(
         name = "unsafedom",
         srcs = [
             "check_dom.go",
             "dom_utils.go",
         ],
         importpath = "unsafedom",
-        deps = ["@org_golang_x_tools//go/analysis:go_default_library"],
+        deps = ["@org_golang_x_tools//go/analysis:go_tool_library"],
         visibility = ["//visibility:public"],
     )
+
+**NOTE**: `go_tool_library`_ is a limited variant of ``go_library`` which avoids
+a circular dependency: `go_library`_ implicitly depends on `nogo`_, which
+depends on analyzer libraries, which must not depend on `nogo`_.
+`go_tool_library`_ does not have the same implicit dependency.
 
 Pass labels for these targets to the ``deps`` attribute of your `nogo`_ target,
 as described in the `Setup`_ section.
@@ -295,7 +303,7 @@ See the full list of available nogo checks:
 
 .. code:: shell
 
-    bazel query 'kind(go_library, @org_golang_x_tools//go/analysis/passes/...)'
+    bazel query 'kind(go_tool_library, @org_golang_x_tools//go/analysis/passes/...)'
 
 
 API
@@ -324,6 +332,10 @@ Attributes
 |                                                                                                  |
 | These libraries must declare an ``analysis.Analyzer`` variable named `Analyzer` to ensure that   |
 | the analyzers they implement are called by nogo.                                                 |
+|                                                                                                  |
+| To avoid bootstrapping problems, these libraries must be `go_tool_library`_ targets, and must    |
+| import `@org_golang_x_tools//go/analysis:go_tool_library`, the `go_tool_library`_ version of     |
+| the package `analysis`_ target.                                                                  |
 +----------------------------+-----------------------------+---------------------------------------+
 | :param:`config`            | :type:`label`               | :value:`None`                         |
 +----------------------------+-----------------------------+---------------------------------------+
