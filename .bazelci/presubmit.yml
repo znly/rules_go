@@ -50,7 +50,7 @@ platforms:
     # gcc or clang. The Go SDK does not support MSVC.
     - "--cpu=x64_windows"
     - "--compiler=mingw-gcc"
-    - '--action_env=PATH=PATH=C:\tools\msys64\usr\bin;C:\tools\msys64\bin;C:\tools\msys64\mingw64\bin;C:\python3\Scripts\;C:\python3;C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem;C:\Windows\System32\WindowsPowerShell\v1.0;C:\Windows\System32\OpenSSH;C:\ProgramData\GooGet;C:\Program Files\Google\Compute Engine\metadata_scripts;C:\Program Files (x86)\Google\Cloud SDK\google-cloud-sdk\bin;C:\Program Files\Google\Compute Engine\sysprep;C:\ProgramData\chocolatey\bin;C:\Program Files\Git\cmd;C:\tools\msys64\usr\bin;c:\openjdk\bin;C:\Program Files (x86)\Windows Kits\8.1\Windows Performance Toolkit\;C:\Program Files\CMake\bin;c:\ninja;c:\bazel;c:\buildkite'
+    - '--action_env=PATH=C:\tools\msys64\usr\bin;C:\tools\msys64\bin;C:\tools\msys64\mingw64\bin;C:\python3\Scripts\;C:\python3;C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem;C:\Windows\System32\WindowsPowerShell\v1.0;C:\Windows\System32\OpenSSH;C:\ProgramData\GooGet;C:\Program Files\Google\Compute Engine\metadata_scripts;C:\Program Files (x86)\Google\Cloud SDK\google-cloud-sdk\bin;C:\Program Files\Google\Compute Engine\sysprep;C:\ProgramData\chocolatey\bin;C:\Program Files\Git\cmd;C:\tools\msys64\usr\bin;c:\openjdk\bin;C:\Program Files (x86)\Windows Kits\8.1\Windows Performance Toolkit\;C:\Program Files\CMake\bin;c:\ninja;c:\bazel;c:\buildkite'
     # NOTE(bazelbuild/bazel#10529): bazel doesn't register the mingw toolchain automatically.
     # We also need the host and target platforms to have the mingw constraint value.
     - "--extra_toolchains=@local_config_cc//:cc-toolchain-x64_windows_mingw"
@@ -67,6 +67,7 @@ platforms:
     # TODO(#1789): go_path tests that require symlinks fail. These should
     # be skipped automatically.
     # TODO(#1790): Tests that require data should use bazel.Runfile.
+    # TODO(#2516): Tests that require protoc fail when protoc is built with mingw-gcc.
     - "--"
     - "..."
     - "-@com_github_golang_protobuf//ptypes:go_default_library_gen"
@@ -156,9 +157,7 @@ platforms:
     - "-//tests/core/cgo:dylib_test"
     - "-//tests/core/cgo:versioned_dylib_client"
     - "-//tests/core/cgo:versioned_dylib_test"
-    - "-//tests/core/coverage:coverage_test"
-    - "-//tests/core/cross:cross_test"
-    - "-//tests/core/go_binary:go_default_test"
+    - "-//tests/core/cross:proto_test"
     - "-//tests/core/go_embed_data:go_default_test"
     - "-//tests/core/go_embed_data:go_default_library"
     - "-//tests/core/go_embed_data:unpack"
@@ -186,18 +185,10 @@ platforms:
     - "-//tests/core/go_plugin:go_plugin"
     - "-//tests/core/go_plugin:go_default_test"
     - "-//tests/core/go_plugin:plugin"
-    - "-//tests/core/go_proto_library:bar_go_proto"
-    - "-//tests/core/go_proto_library:bar_proto"
-    - "-//tests/core/go_proto_library:embed_go_proto"
-    - "-//tests/core/go_proto_library:embed_test"
-    - "-//tests/core/go_proto_library:foo_go_proto"
-    - "-//tests/core/go_proto_library:foo_proto"
+    - "-//tests/core/go_proto_library:all"
     - "-//tests/core/go_proto_library_importmap:foo_go_proto"
     - "-//tests/core/go_proto_library_importmap:foo_proto"
     - "-//tests/core/go_proto_library_importmap:importmap_test"
-    - "-//tests/core/go_proto_library:transitive_go_proto"
-    - "-//tests/core/go_proto_library:transitive_test"
-    - "-//tests/core/go_proto_library:wrap_lib"
     - "-//tests/core/go_test:data_test"
     - "-//tests/core/go_test:pwd_test"
     - "-//tests/core/race:race_test"
@@ -250,7 +241,7 @@ platforms:
     # gcc or clang. The Go SDK does not support MSVC.
     - "--cpu=x64_windows"
     - "--compiler=mingw-gcc"
-    - '--action_env=PATH=PATH=C:\tools\msys64\usr\bin;C:\tools\msys64\bin;C:\tools\msys64\mingw64\bin;C:\python3\Scripts\;C:\python3;C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem;C:\Windows\System32\WindowsPowerShell\v1.0;C:\Windows\System32\OpenSSH;C:\ProgramData\GooGet;C:\Program Files\Google\Compute Engine\metadata_scripts;C:\Program Files (x86)\Google\Cloud SDK\google-cloud-sdk\bin;C:\Program Files\Google\Compute Engine\sysprep;C:\ProgramData\chocolatey\bin;C:\Program Files\Git\cmd;C:\tools\msys64\usr\bin;c:\openjdk\bin;C:\Program Files (x86)\Windows Kits\8.1\Windows Performance Toolkit\;C:\Program Files\CMake\bin;c:\ninja;c:\bazel;c:\buildkite'
+    - '--action_env=PATH=C:\tools\msys64\usr\bin;C:\tools\msys64\bin;C:\tools\msys64\mingw64\bin;C:\python3\Scripts\;C:\python3;C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem;C:\Windows\System32\WindowsPowerShell\v1.0;C:\Windows\System32\OpenSSH;C:\ProgramData\GooGet;C:\Program Files\Google\Compute Engine\metadata_scripts;C:\Program Files (x86)\Google\Cloud SDK\google-cloud-sdk\bin;C:\Program Files\Google\Compute Engine\sysprep;C:\ProgramData\chocolatey\bin;C:\Program Files\Git\cmd;C:\tools\msys64\usr\bin;c:\openjdk\bin;C:\Program Files (x86)\Windows Kits\8.1\Windows Performance Toolkit\;C:\Program Files\CMake\bin;c:\ninja;c:\bazel;c:\buildkite'
     - "--extra_toolchains=@local_config_cc//:cc-toolchain-x64_windows_mingw"
     - "--host_platform=@io_bazel_rules_go//go/toolchain:windows_amd64_cgo"
     - "--platforms=@io_bazel_rules_go//go/toolchain:windows_amd64_cgo"
@@ -258,6 +249,9 @@ platforms:
     # On Windows CI, bazel (bazelisk) needs %LocalAppData% to find the cache directory.
     # We invoke bazel in tests, so the tests need this, too.
     - "--test_env=LOCALAPPDATA"
+    # go_bazel_test runs bazel in a test workspace. It needs the same flags as above.
+    - "--test_env=GO_BAZEL_TEST_BAZELFLAGS=--cpu=x64_windows --compiler=mingw-gcc --extra_toolchains=@local_config_cc//:cc-toolchain-x64_windows_mingw --action_env=PATH --host_platform=@io_bazel_rules_go//go/toolchain:windows_amd64_cgo --incompatible_enable_cc_toolchain_resolution"
+    - "--test_env=PATH"
     test_targets:
     - "--"
     - "..."
@@ -273,25 +267,13 @@ platforms:
     - "-@org_golang_x_tools//go/packages/packagestest:go_default_test"
     - "-@test_chdir_remote//sub:go_default_test"
     - "-//tests:buildifier_test" # requires bash
-    - "-//tests/core/cgo/objc:objc_test"
-    - "-//tests/core/cgo:race_test"
-    - "-//tests/core/cgo:opts_test"
-    - "-//tests/core/cgo:opts"
     - "-//tests/core/cgo:dylib_test"
     - "-//tests/core/cgo:dylib_client"
     - "-//tests/core/cgo:versioned_dylib_test"
     - "-//tests/core/cgo:versioned_dylib_client"
-    - "-//tests/core/cgo:cc_libs_test"
-    - "-//tests/core/cgo:pure"
-    - "-//tests/core/cgo:cc_srcs"
-    - "-//tests/core/cgo:cc_deps"
-    - "-//tests/core/cgo:c_srcs"
-    - "-//tests/core/cgo:bar_dep"
-    - "-//tests/core/cgo:tag_test" # TODO(#2031): FindBinary does not work
     - "-//tests/core/coverage:coverage_test"
-    - "-//tests/core/cross:cross_test"
+    - "-//tests/core/cross:proto_test"
     - "-//tests/core/go_binary:go_default_test"
-    - "-//tests/core/go_binary:stamp_test"
     - "-//tests/core/go_embed_data:go_default_test"
     - "-//tests/core/go_embed_data:go_default_test"
     - "-//tests/core/go_embed_data:go_default_library"
@@ -312,20 +294,17 @@ platforms:
     - "-//tests/core/go_plugin:go_plugin"
     - "-//tests/core/go_plugin:go_default_test"
     - "-//tests/core/go_plugin:plugin"
-    - "-//tests/core/go_proto_library:embed_test"
+    - "-//tests/core/go_proto_library:all"
     - "-//tests/core/go_proto_library_importmap:importmap_test"
-    - "-//tests/core/go_proto_library:transitive_test"
     - "-//tests/core/go_test:data_test"
     - "-//tests/core/go_test:pwd_test"
-    - "-//tests/core/nogo/config:config_test"
     - "-//tests/core/nogo/coverage:coverage_test"
-    - "-//tests/core/nogo/vet:vet_test"
-    - "-//tests/core/race:race_test"
     - "-//tests/core/stdlib:buildid_test"
     - "-//tests/examples/executable_name:executable_name"
-    - "-//tests/integration/gazelle:gazelle_test"
+    - "-//tests/integration/gazelle:gazelle_test" # exceeds command line length limit
     - "-//tests/integration/googleapis:color_service_test"
     - "-//tests/integration/reproducibility:reproducibility_test"
+    - "-//tests/legacy/cgo_pthread_flag:go_default_test" # fails without error, passes locally. Problem with CI msys2?
     - "-//tests/legacy/examples/cgo/example_command:example_command_test"
     - "-//tests/legacy/examples/cgo/example_command:example_command_script"
     - "-//tests/legacy/examples/cgo/example_command:example_command"
@@ -335,7 +314,6 @@ platforms:
     - "-//tests/legacy/examples/cgo/cc_dependency:version"
     - "-//tests/legacy/examples/cgo/cc_dependency:c_version_so"
     - "-//tests/legacy/examples/cgo/cc_dependency:c_version_orig"
-    - "-//tests/legacy/examples/cgo:sub"
     - "-//tests/legacy/examples/proto/gogo:gogo_test"
     - "-//tests/legacy/examples/proto:proto_pure_test"
     - "-//tests/legacy/examples/proto:proto_test"

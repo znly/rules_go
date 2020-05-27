@@ -301,11 +301,23 @@ func setupWorkspace(args Args, files []string) (dir string, cleanup func() error
 	}
 	cleanups = append(cleanups, func() error { return os.RemoveAll(execDir) })
 
-	// Extract test files for the main workspace.
+	// Create the workspace directory.
 	mainDir := filepath.Join(execDir, "main")
 	if err := os.MkdirAll(mainDir, 0777); err != nil {
 		return "", cleanup, err
 	}
+
+	// Create a .bazelrc file if GO_BAZEL_TEST_BAZELFLAGS is set.
+	// The test can override this with its own .bazelrc or with flags in commands.
+	if flags := os.Getenv("GO_BAZEL_TEST_BAZELFLAGS"); flags != "" {
+		bazelrcPath := filepath.Join(mainDir, ".bazelrc")
+		content := "build " + flags
+		if err := ioutil.WriteFile(bazelrcPath, []byte(content), 0666); err != nil {
+			return "", cleanup, err
+		}
+	}
+
+	// Extract test files for the main workspace.
 	if err := extractTxtar(mainDir, args.Main); err != nil {
 		return "", cleanup, fmt.Errorf("building main workspace: %v", err)
 	}
