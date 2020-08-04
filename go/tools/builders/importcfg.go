@@ -28,8 +28,8 @@ import (
 )
 
 type archive struct {
-	label, importPath, packagePath, aFile, xFile string
-	importPathAliases                            []string
+	label, importPath, packagePath, file string
+	importPathAliases                    []string
 }
 
 // checkImports verifies that each import in files refers to a
@@ -125,7 +125,7 @@ func buildImportcfgFileForCompile(imports map[string]*archive, installSuffix, di
 			if imp != arc.packagePath {
 				fmt.Fprintf(buf, "importmap %s=%s\n", imp, arc.packagePath)
 			}
-			fmt.Fprintf(buf, "packagefile %s=%s\n", arc.packagePath, arc.aFile)
+			fmt.Fprintf(buf, "packagefile %s=%s\n", arc.packagePath, arc.file)
 		}
 	}
 
@@ -179,7 +179,7 @@ func buildImportcfgFileForLink(archives []archive, stdPackageListPath, installSu
 			continue
 		}
 		depsSeen[arc.packagePath] = arc.label
-		fmt.Fprintf(buf, "packagefile %s=%s\n", arc.packagePath, arc.aFile)
+		fmt.Fprintf(buf, "packagefile %s=%s\n", arc.packagePath, arc.file)
 	}
 	f, err := ioutil.TempFile(dir, "importcfg")
 	if err != nil {
@@ -231,20 +231,18 @@ func isRelative(path string) bool {
 	return strings.HasPrefix(path, "./") || strings.HasPrefix(path, "../")
 }
 
-// TODO(jayconrod): consolidate compile and link archive flags.
+type archiveMultiFlag []archive
 
-type compileArchiveMultiFlag []archive
-
-func (m *compileArchiveMultiFlag) String() string {
+func (m *archiveMultiFlag) String() string {
 	if m == nil || len(*m) == 0 {
 		return ""
 	}
 	return fmt.Sprint(*m)
 }
 
-func (m *compileArchiveMultiFlag) Set(v string) error {
+func (m *archiveMultiFlag) Set(v string) error {
 	parts := strings.Split(v, "=")
-	if len(parts) != 4 {
+	if len(parts) != 3 {
 		return fmt.Errorf("badly formed -arc flag: %s", v)
 	}
 	importPaths := strings.Split(parts[0], ":")
@@ -252,33 +250,8 @@ func (m *compileArchiveMultiFlag) Set(v string) error {
 		importPath:        importPaths[0],
 		importPathAliases: importPaths[1:],
 		packagePath:       parts[1],
-		aFile:             abs(parts[2]),
-	}
-	if parts[3] != "" {
-		a.xFile = abs(parts[3])
+		file:              abs(parts[2]),
 	}
 	*m = append(*m, a)
-	return nil
-}
-
-type linkArchiveMultiFlag []archive
-
-func (m *linkArchiveMultiFlag) String() string {
-	if m == nil || len(*m) == 0 {
-		return ""
-	}
-	return fmt.Sprint(m)
-}
-
-func (m *linkArchiveMultiFlag) Set(v string) error {
-	parts := strings.Split(v, "=")
-	if len(parts) != 3 {
-		return fmt.Errorf("badly formed -arc flag: %s", v)
-	}
-	*m = append(*m, archive{
-		label:       parts[0],
-		packagePath: parts[1],
-		aFile:       abs(parts[2]),
-	})
 	return nil
 }

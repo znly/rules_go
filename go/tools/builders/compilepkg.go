@@ -41,7 +41,7 @@ func compilePkg(args []string) error {
 	fs := flag.NewFlagSet("GoCompilePkg", flag.ExitOnError)
 	goenv := envFlags(fs)
 	var unfilteredSrcs, coverSrcs multiFlag
-	var deps compileArchiveMultiFlag
+	var deps archiveMultiFlag
 	var importPath, packagePath, nogoPath, packageListPath, coverMode string
 	var outPath, outFactsPath, cgoExportHPath string
 	var testFilter string
@@ -62,8 +62,8 @@ func compilePkg(args []string) error {
 	fs.StringVar(&nogoPath, "nogo", "", "The nogo binary. If unset, nogo will not be run.")
 	fs.StringVar(&packageListPath, "package_list", "", "The file containing the list of standard library packages")
 	fs.StringVar(&coverMode, "cover_mode", "", "The coverage mode to use. Empty if coverage instrumentation should not be added.")
-	fs.StringVar(&outPath, "o", "", "The output archive file to write")
-	fs.StringVar(&outFactsPath, "x", "", "The nogo facts file to write")
+	fs.StringVar(&outPath, "o", "", "The output archive file to write compiled code")
+	fs.StringVar(&outFactsPath, "x", "", "The output archive file to write export data and nogo facts")
 	fs.StringVar(&cgoExportHPath, "cgoexport", "", "The _cgo_exports.h file to write")
 	fs.StringVar(&testFilter, "testfilter", "off", "Controls test package filtering")
 	if err := fs.Parse(args); err != nil {
@@ -162,7 +162,7 @@ func compileArchive(
 	nogoPath string,
 	packageListPath string,
 	outPath string,
-	outFactsPath string,
+	outXPath string,
 	cgoExportHPath string) error {
 
 	workDir, cleanup, err := goenv.workDir()
@@ -318,8 +318,15 @@ func compileArchive(
 	}
 	defer os.Remove(importcfgPath)
 
+	// tempdir to store nogo facts and pkgdef for packaging later
+	xTempDir, err := ioutil.TempDir(filepath.Dir(outXPath), "x_files")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(xTempDir)
 	// Run nogo concurrently.
 	var nogoChan chan error
+	outFactsPath := filepath.Join(xTempDir, nogoFact)
 	if nogoPath != "" {
 		ctx, cancel := context.WithCancel(context.Background())
 		nogoChan = make(chan error)
@@ -387,15 +394,35 @@ func compileArchive(
 	}
 
 	// Check results from nogo.
+	nogoStatus := nogoNotRun
 	if nogoChan != nil {
 		err := <-nogoChan
 		nogoChan = nil // no cancellation needed
 		if err != nil {
+			nogoStatus = nogoFailed
+			// TODO: should we still create the .x file without nogo facts in this case?
 			return err
 		}
+		nogoStatus = nogoSucceeded
 	}
 
-	return nil
+	// Extract the export data file and pack it in an .x archive together with the
+	// nogo facts file (if there is one). This allows compile actions to depend
+	// on .x files only, so we don't need to recompile a package when one of its
+	// imports changes in a way that doesn't affect export data.
+	// TODO(golang/go#33820): Ideally, we would use -linkobj to tell the compiler
+	// to create separate .a and .x files for compiled code and export data, then
+	// copy the nogo facts into the .x file. Unfortunately, when building a plugin,
+	// the linker needs export data in the .a file. To work around this, we copy
+	// the export data into the .x file ourselves.
+	if err = extractFileFromArchive(outPath, xTempDir, pkgDef); err != nil {
+		return err
+	}
+	pkgDefPath := filepath.Join(xTempDir, pkgDef)
+	if nogoStatus == nogoSucceeded {
+		return appendFiles(goenv, outXPath, []string{pkgDefPath, outFactsPath})
+	}
+	return appendFiles(goenv, outXPath, []string{pkgDefPath})
 }
 
 func compileGo(goenv *env, srcs []string, packagePath, importcfgPath, asmHdrPath, symabisPath string, gcFlags []string, outPath string) error {
@@ -420,9 +447,7 @@ func runNogo(ctx context.Context, workDir string, nogoPath string, srcs []string
 	args = append(args, "-p", packagePath)
 	args = append(args, "-importcfg", importcfgPath)
 	for _, dep := range deps {
-		if dep.xFile != "" {
-			args = append(args, "-fact", fmt.Sprintf("%s=%s", dep.importPath, dep.xFile))
-		}
+		args = append(args, "-fact", fmt.Sprintf("%s=%s", dep.importPath, dep.file))
 	}
 	args = append(args, "-x", outFactsPath)
 	args = append(args, srcs...)
