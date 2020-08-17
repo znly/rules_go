@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
-	"go/ast"
 	"go/format"
 	"go/parser"
 	"go/token"
@@ -135,30 +134,4 @@ func init() {
 	}
 
 	return nil
-}
-
-func addNamedImport(fset *token.FileSet, f *ast.File, name, path string) {
-	imp := &ast.ImportSpec{
-		Name: &ast.Ident{Name: name},
-		Path: &ast.BasicLit{
-			Kind:  token.STRING,
-			Value: strconv.Quote(path),
-		},
-	}
-	impDecl := &ast.GenDecl{Tok: token.IMPORT, Specs: []ast.Spec{imp}}
-	f.Decls = append([]ast.Decl{impDecl}, f.Decls...)
-
-	// Our new import, preceded by a blank line,  goes after the package declaration
-	// and after the comment, if any, that starts on the same line as the
-	// package declaration.
-	impDecl.TokPos = f.Package
-	file := fset.File(f.Package)
-	pkgLine := file.Line(f.Package)
-	for _, c := range f.Comments {
-		if file.Line(c.Pos()) > pkgLine {
-			break
-		}
-		// +2 for a blank line
-		impDecl.TokPos = c.End() + 2
-	}
 }

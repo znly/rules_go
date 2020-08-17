@@ -26,6 +26,7 @@ filegroup(
         "flags.go",
         "generate_nogo_main.go",
         "generate_test_main.go",
+        "imports.go",
         "importcfg.go",
         "link.go",
         "pack.go",
