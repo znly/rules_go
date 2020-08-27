@@ -26,6 +26,20 @@ load(
     "stdlib",
 )
 
+# gazelle:prefix github.com/bazelbuild/rules_go
+# gazelle:exclude tests
+# gazelle:exclude third_party
+# gazelle:exclude go/tools/builders
+# gazelle:exclude go/tools/coverdata
+# gazelle:exclude go/tools/fetch_repo
+# gazelle:exclude go/tools/windows-testrunner
+# gazelle:exclude go/tools/testwrapper
+# gazelle:go_naming_convention import_alias
+
+# TODO(jayconrod): add a gazelle rule so gazelle can be run automatically.
+# It can't go here though, because it would break anything that depends on
+# rules_go but not Gazelle, including our own go_bazel_tests.
+
 stdlib(
     name = "stdlib",
     cgo_context_data = select({
