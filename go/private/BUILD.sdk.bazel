@@ -69,3 +69,8 @@ filegroup(
         "pkg/**",
     ]),
 )
+
+exports_files(
+    ["lib/time/zoneinfo.zip"],
+    visibility = ["//visibility:public"],
+)
