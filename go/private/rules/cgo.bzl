@@ -14,7 +14,6 @@
 
 load(
     "//go/private:common.bzl",
-    "as_iterable",
     "has_simple_shared_lib_extension",
     "has_versioned_shared_lib_extension",
     "hdr_exts",
@@ -109,7 +108,7 @@ def cgo_configure(go, srcs, cdeps, cppopts, copts, cxxopts, clinkopts):
         if CcInfo in d:
             cc_transitive_headers = d[CcInfo].compilation_context.headers
             inputs_transitive.append(cc_transitive_headers)
-            cc_libs = _cc_libs(d)
+            cc_libs, cc_link_flags = _cc_libs_and_flags(d)
             inputs_direct.extend(cc_libs)
             deps_direct.extend(cc_libs)
             cc_defines = d[CcInfo].compilation_context.defines.to_list()
@@ -146,7 +145,6 @@ def cgo_configure(go, srcs, cdeps, cppopts, copts, cxxopts, clinkopts):
                     inputs_direct.append(lib)
                 else:
                     lib_opts.append(lib.path)
-            cc_link_flags = d[CcInfo].linking_context.user_link_flags
             clinkopts.extend(cc_link_flags)
 
         elif hasattr(d, "objc"):
@@ -185,21 +183,23 @@ def cgo_configure(go, srcs, cdeps, cppopts, copts, cxxopts, clinkopts):
         clinkopts = clinkopts,
     )
 
-def _cc_libs(target):
+def _cc_libs_and_flags(target):
     # Copied from get_libs_for_static_executable in migration instructions
     # from bazelbuild/bazel#7036.
-    libraries_to_link = as_iterable(target[CcInfo].linking_context.libraries_to_link)
     libs = []
-    for library_to_link in libraries_to_link:
-        if library_to_link.static_library != None:
-            libs.append(library_to_link.static_library)
-        elif library_to_link.pic_static_library != None:
-            libs.append(library_to_link.pic_static_library)
-        elif library_to_link.interface_library != None:
-            libs.append(library_to_link.interface_library)
-        elif library_to_link.dynamic_library != None:
-            libs.append(library_to_link.dynamic_library)
-    return libs
+    flags = []
+    for li in target[CcInfo].linking_context.linker_inputs.to_list():
+        flags.extend(li.user_link_flags)
+        for library_to_link in li.libraries:
+            if library_to_link.static_library != None:
+                libs.append(library_to_link.static_library)
+            elif library_to_link.pic_static_library != None:
+                libs.append(library_to_link.pic_static_library)
+            elif library_to_link.interface_library != None:
+                libs.append(library_to_link.interface_library)
+            elif library_to_link.dynamic_library != None:
+                libs.append(library_to_link.dynamic_library)
+    return libs, flags
 
 _DEFAULT_PLATFORM_COPTS = select({
     "@io_bazel_rules_go//go/platform:darwin": [],
