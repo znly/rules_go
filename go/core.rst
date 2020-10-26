@@ -863,6 +863,17 @@ Attributes
 | included in the output directory. Files listed in the :param:`data` attribute                    |
 | for this rule will be included regardless of this attribute.                                     |
 +----------------------------+-----------------------------+---------------------------------------+
+| :param:`include_pkg`       | :type:`bool`                | :value:`False`                        |
++----------------------------+-----------------------------+---------------------------------------+
+| When true, a `pkg` subdirectory containing the compiled libraries will be created in the         |
+| generated `GOPATH` containing compiled libraries.                                                |
++----------------------------+-----------------------------+---------------------------------------+
+| :param:`include_transitive`| :type:`bool`                | :value:`True`                         |
++----------------------------+-----------------------------+---------------------------------------+
+| When true, the transitive dependency graph will be included in the generated `GOPATH`. This is   |
+| the default behaviour. When false, only the direct dependencies will be included in the          |
+| generated `GOPATH`.                                                                              |
++----------------------------+-----------------------------+---------------------------------------+
 
 Defines and stamping
 --------------------
