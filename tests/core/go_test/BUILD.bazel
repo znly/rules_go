@@ -189,3 +189,9 @@ go_library(
     importpath = "github.com/bazelbuild/rules_go/tests/core/go_test/indirect_import_dep",
     deps = [":indirect_import_lib"],
 )
+
+go_bazel_test(
+    name = "testmain_without_exit_test",
+    srcs = ["testmain_without_exit_test.go"],
+)
+

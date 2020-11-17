@@ -73,6 +73,9 @@ import (
 	"log"
 	"os"
 	"os/exec"
+{{if .TestMain}}
+	"reflect"
+{{end}}
 	"strconv"
 	"testing"
 	"testing/internal/testdeps"
@@ -156,6 +159,8 @@ func main() {
 	os.Exit(m.Run())
 	{{else}}
 	{{.TestMain}}(m)
+	{{/* See golang.org/issue/34129 and golang.org/cl/219639 */}}
+	os.Exit(int(reflect.ValueOf(m).Elem().FieldByName("exitCode").Int()))
 	{{end}}
 }
 `
