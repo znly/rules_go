@@ -104,7 +104,7 @@ def _filter_options(options, blacklist):
 
 def _child_name(go, path, ext, name):
     if not name:
-        name = go._ctx.label.name
+        name = go.label.name
         if path or not ext:
             # The '_' avoids collisions with another file matching the label name.
             # For example, hello and hello/testmain.go.
@@ -153,8 +153,8 @@ def _new_library(go, name = None, importpath = None, resolver = None, importable
         pathtype = EXPORT_PATH
 
     return GoLibrary(
-        name = go._ctx.label.name if not name else name,
-        label = go._ctx.label,
+        name = go.label.name if not name else name,
+        label = go.label,
         importpath = importpath,
         importmap = importmap,
         importpath_aliases = go.importpath_aliases,
@@ -289,7 +289,7 @@ def _check_binary_dep(go, dep, edge):
         getattr(dep[DefaultInfo], "files_to_run", None) and
         dep[DefaultInfo].files_to_run.executable):
         fail("rule {rule} depends on executable {dep} via {edge}. This is not safe for cross-compilation. Depend on go_library instead.".format(
-            rule = str(go._ctx.label),
+            rule = str(go.label),
             dep = str(dep.label),
             edge = edge,
         ))
@@ -471,6 +471,7 @@ def go_context(ctx, attr = None):
         env = env,
         tags = tags,
         stamp = mode.stamp,
+        label = ctx.label,
 
         # Action generators
         archive = toolchain.actions.archive,
@@ -709,10 +710,12 @@ def _cgo_context_data_impl(ctx):
     )
 
     return [CgoContextInfo(
-        crosstool = find_cpp_toolchain(ctx).all_files.to_list(),
+        crosstool = cc_toolchain.all_files.to_list(),
         tags = tags,
         env = env,
         cgo_tools = struct(
+            cc_toolchain = cc_toolchain,
+            feature_configuration = feature_configuration,
             c_compiler_path = c_compiler_path,
             c_compile_options = c_compile_options,
             cxx_compile_options = cxx_compile_options,
