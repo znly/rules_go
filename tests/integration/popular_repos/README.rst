@@ -95,8 +95,9 @@ ________________
 This runs tests from the repository `golang.org/x/sys <https://golang.org/x/sys>`_
 
 * @org_golang_x_sys//cpu:cpu_test
+* @org_golang_x_sys//execabs:execabs_test
+* @org_golang_x_sys//internal/unsafeheader:unsafeheader_test
 * @org_golang_x_sys//plan9:plan9_test
-* @org_golang_x_sys//unix:unix_test
 * @org_golang_x_sys//windows:windows_test
 * @org_golang_x_sys//windows/registry:registry_test
 * @org_golang_x_sys//windows/svc:svc_test
